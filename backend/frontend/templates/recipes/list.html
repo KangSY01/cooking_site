@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}레시피 목록 | 자취생의 창의 요리{% endblock %}
+
+{% block content %}
+<section class="recipe-list-container">
+  <h2>전체 레시피</h2>
+
+  <!-- 나중에 검색/필터 추가 가능 -->
+  <div class="recipe-filters">
+    <!-- 검색/필터 UI 자리 -->
+  </div>
+
+  <div id="recipeList" class="recipe-list">
+    <!-- JS로 레시피 카드가 채워짐 -->
+  </div>
+
+  <p id="recipeError" class="error"></p>
+</section>
+{% endblock %}

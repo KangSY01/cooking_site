@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}레시피 상세 | 자취생의 창의 요리{% endblock %}
+
+{% block content %}
+<section class="recipe-detail-container" data-recipe-id="{{ recipe_id }}">
+  <div id="recipeDetail">
+    <!-- JS가 이 안에 상세 정보를 채울 예정 -->
+    <p>레시피 정보를 불러오는 중입니다...</p>
+  </div>
+
+  <p id="recipeDetailError" class="error"></p>
+</section>
+{% endblock %}
