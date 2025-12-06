@@ -5,7 +5,7 @@ from rest_framework import status
 from .jwt_utils import create_jwt
 from django.shortcuts import render
 from .authentication import JWTAuthentication
-from .models import Recipe, RecipeComment, Member, RecipeLike, Rating
+from .models import Recipe, RecipeComment, Member, RecipeLike, Rating, Follow
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from django.shortcuts import render, get_object_or_404
 
@@ -20,6 +20,7 @@ from .serializers import (
     MemberLoginSerializer,
     RecipeCreateUpdateSerializer,
     RatingCreateUpdateSerializer,
+    RecipeCommentCreateSerializer,
 )
 from .permissions import IsAuthorOrAdmin
 
@@ -261,3 +262,98 @@ class RecipeRatingAPIView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class RecipeCommentCreateAPIView(APIView):
+    """
+    POST /api/recipes/<recipe_id>/comments/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, recipe_id):
+        serializer = RecipeCommentCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        recipe = get_object_or_404(Recipe, recipe_id=recipe_id)
+        member: Member = request.user
+        content = serializer.validated_data["content"]
+
+        comment = RecipeComment.objects.create(
+            recipe=recipe,
+            author=member,
+            content=content
+        )
+
+        return Response(
+            RecipeCommentSerializer(comment).data,
+            status=status.HTTP_201_CREATED
+        )
+class RecipeCommentDeleteAPIView(APIView):
+    """
+    DELETE /api/comments/<comment_id>/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, comment_id):
+        comment = get_object_or_404(RecipeComment, comment_id=comment_id)
+        
+        # 본인이거나 관리자여야 함
+        if not (request.user.member_id == comment.author_id or request.user.role == "ADMIN"):
+            return Response(
+                {"detail": "삭제 권한이 없습니다."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        comment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class FollowToggleAPIView(APIView):
+    """
+    POST /api/members/<member_id>/follow/
+    - 팔로우 안 했으면 생성
+    - 이미 팔로우 했으면 삭제(언팔)
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, member_id):
+        me: Member = request.user
+
+        # 자기 자신을 팔로우하는 것은 불가
+        if me.member_id == member_id:
+            return Response(
+                {"detail": "자기 자신을 팔로우할 수 없습니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        followee = get_object_or_404(Member, member_id=member_id)
+
+        qs = Follow.objects.filter(follower=me, followee=followee)
+
+        if qs.exists():
+            # 이미 팔로우 → 언팔로우
+            qs.delete()
+            return Response({"following": False}, status=status.HTTP_200_OK)
+        else:
+            # 새로 팔로우
+            Follow.objects.create(follower=me, followee=followee)
+            return Response({"following": True}, status=status.HTTP_201_CREATED)
+
+
+class FollowingListAPIView(APIView):
+    """
+    GET /api/members/<member_id>/following/
+    member_id 사용자가 팔로우하는 사람들 리스트
+    """
+    def get(self, request, member_id):
+        member = get_object_or_404(Member, member_id=member_id)
+
+        followings = Member.objects.filter(
+            follower_set__follower=member
+        )
+
+        data = MemberSimpleSerializer(followings, many=True).data
+        return Response(data, status=status.HTTP_200_OK)

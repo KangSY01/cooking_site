@@ -28,6 +28,7 @@ class Follow(models.Model):
         Member,
         models.DO_NOTHING,
         related_name='following_set',
+        primary_key=True,
     )
     followee = models.ForeignKey(
         Member,

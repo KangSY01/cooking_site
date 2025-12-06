@@ -234,3 +234,12 @@ class RatingSerializer(serializers.ModelSerializer):
 class RatingCreateUpdateSerializer(serializers.Serializer):
     # 단순히 score 값만 받으면 되므로 Serializer 로 충분
     score = serializers.IntegerField(min_value=1, max_value=5)
+
+
+class RecipeCommentCreateSerializer(serializers.Serializer):
+    content = serializers.CharField()
+
+    def validate_content(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("댓글 내용을 입력해주세요.")
+        return value
