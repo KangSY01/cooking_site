@@ -1,8 +1,10 @@
 {% extends "base.html" %}
-
+{% load static %}
 {% block title %}레시피 상세 | 자취생의 창의 요리{% endblock %}
 
 {% block content %}
+<script src="{% static 'js/recipe_detail.js' %}"></script>
+
 <section id="recipeDetailPage" class="recipe-detail-page" data-recipe-id="{{ recipe_id }}">
 
   <!-- 상단 영역: 제목 + 메타 -->
@@ -24,10 +26,11 @@
         </div>
       </div>
 
-      <div class="recipe-detail-actions">
-        <button id="recipeEditBtn" class="btn-outline small">수정</button>
-        <button id="recipeDeleteBtn" class="btn-outline small">삭제</button>
-      </div>
+      <div id="recipeActions" style="display:none;">
+  <button type="button" id="deleteRecipeBtn">삭제하기</button>
+</div>
+
+
     </div>
 
     <div class="recipe-detail-stats">

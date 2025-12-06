@@ -17,8 +17,16 @@ def mypage(request):
     return render(request, "mypage.html")
 
 def recipe_create_page(request):
-    # 새 레시피 등록 페이지
-    return render(request, "recipes/recipe_create.html")
+    return render(request, "recipes/recipe_create.html", {
+        "is_edit": False,
+        "recipe_id": None,
+    })
+
+def recipe_edit_page(request, recipe_id):
+    return render(request, "recipes/recipe_create.html", {
+        "is_edit": True,
+        "recipe_id": recipe_id,
+    })
 
 def signup_view(request):
     return render(request, "signup.html")
@@ -32,3 +40,8 @@ def recipe_search_page(request):
 
 def admin_dashboard_page(request):
     return render(request, "admin/admin_dashboard.html")
+
+def recipe_detail_page(request, recipe_id):
+    return render(request, "recipes/recipe_detail.html", {
+        "recipe_id": recipe_id
+    })

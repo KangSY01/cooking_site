@@ -8,6 +8,9 @@ from django.core.files.storage import default_storage
 from django.utils.crypto import get_random_string
 from rest_framework.parsers import MultiPartParser, FormParser
 import os
+from rest_framework import permissions
+from rest_framework import generics
+from rest_framework.exceptions import PermissionDenied
 
 from .jwt_utils import create_jwt
 from django.shortcuts import render, get_object_or_404
@@ -106,29 +109,35 @@ class RecipeListAPIView(generics.ListCreateAPIView):
         return RecipeListSerializer
 
 
-class RecipeDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    GET    /api/recipes/<recipe_id>/   상세 조회 (모두)
-    PUT    /api/recipes/<recipe_id>/   수정 (작성자 또는 ADMIN)
-    DELETE /api/recipes/<recipe_id>/   삭제 (작성자 또는 ADMIN)
-    """
-    queryset = Recipe.objects.select_related('author')
-    lookup_field = 'recipe_id'       # DB PK 필드명
-    lookup_url_kwarg = 'recipe_id'   # URL 변수명과 맞춰주기 (api/recipes/<int:recipe_id>/)
+class RecipeDetailAPIView(APIView):
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
-    def get_permissions(self):
-        # 수정/삭제는 로그인 + 작성자 or ADMIN
-        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
-            return [permissions.IsAuthenticated(), IsAuthorOrAdmin()]
-        # GET은 모두 허용
-        return [permissions.AllowAny()]
+    def get_object(self, recipe_id):
+        return get_object_or_404(Recipe, pk=recipe_id)
 
-    def get_serializer_class(self):
-        # 수정할 때는 생성/수정용
-        if self.request.method in ['PUT', 'PATCH']:
-            return RecipeCreateUpdateSerializer
-        # 조회할 때는 상세 Serializer
-        return RecipeDetailSerializer
+    def get(self, request, recipe_id):
+        recipe = self.get_object(recipe_id)
+        serializer = RecipeDetailSerializer(recipe)
+        return Response(serializer.data)
+
+    def delete(self, request, recipe_id):
+        recipe = self.get_object(recipe_id)
+
+        # 1) 로그인 확인
+        if not request.user.is_authenticated:
+            return Response({"detail": "로그인이 필요합니다."}, status=401)
+
+        # 2) 작성자 또는 관리자만 삭제 가능
+        # author 필드 이름은 실제 모델에 맞게 조정 (예: recipe.author_id, recipe.author)
+        author_id = getattr(recipe, "author_id", None)
+        user_role = getattr(request.user, "role", None)
+
+        if (request.user.id != author_id) and (user_role != "ADMIN"):
+            return Response({"detail": "삭제 권한이 없습니다."}, status=403)
+
+        # 3) 삭제
+        recipe.delete()
+        return Response(status=204)
 
 
 class RecipeCommentListAPIView(generics.ListAPIView):
