@@ -9,9 +9,18 @@ class Member(models.Model):
     role = models.TextField()  # PostgreSQL enum(user_role) 매핑 추정
     created_at = models.DateTimeField(blank=True, null=True)
 
+    @property
+    def is_authenticated(self):
+        """
+        DRF의 IsAuthenticated permission이 request.user.is_authenticated 를
+        호출할 때 에러 나지 않도록 True 를 돌려주는 속성.
+        """
+        return True
+
     class Meta:
         managed = False
         db_table = 'member'
+        
 
 
 class Follow(models.Model):
