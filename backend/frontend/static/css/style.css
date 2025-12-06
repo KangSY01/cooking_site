@@ -1,0 +1,556 @@
+:root {
+  --hero-orange: #ff5c00;      /* 메인 주황색 */
+  --hero-orange-dark: #c44700; /* 버튼용 진한 주황 */
+  --bg-page: #f5f5f5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  color: #333;
+  background-color: var(--bg-page);
+}
+
+
+/* ====== 헤더 ====== */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.header-inner {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* 왼쪽 로고 / 오른쪽 메뉴 전체 */
+}
+
+/* 오른쪽 전체(메뉴 + 로그인)를 하나의 그룹으로 정렬 */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 32px; /* 메뉴와 로그인 버튼 간격 */
+}
+
+/* 네비 메뉴 안 아이템 간 간격 */
+.main-nav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+
+/* 로고 영역 (왼쪽) */
+.logo-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.logo-text {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--hero-orange);
+}
+
+/* 가운데 메뉴 */
+.main-nav {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  font-size: 18px;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: #3b4253; /* 피그마처럼 약간 진한 회색/남색 느낌 */
+}
+
+.nav-icon {
+  font-size: 15px;
+}
+
+.nav-link:hover {
+  color: #111827;
+}
+
+/* 오른쪽 로그인 버튼 (주황색 pill) */
+.btn-login {
+  font-size: 16px;
+  padding: 10px 26px;
+  border-radius: 999px;
+  border: none;
+  color: #ffffff;
+  background: var(--hero-orange);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-login:hover {
+  background: #ff7326;
+}
+
+
+/* ====== 공통 버튼 ====== */
+
+.btn {
+  border-radius: 999px;
+  padding: 10px 26px;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+/* 왼쪽 흰 버튼 (레시피 둘러보기) */
+.btn-primary {
+  background: #ffffff;
+  color: var(--hero-orange);
+}
+
+.btn-primary:hover {
+  background: #fff7ef;
+}
+
+/* 오른쪽 진한 주황 버튼 (레시피 검색하기) */
+.btn-secondary {
+  background: var(--hero-orange-dark);
+  color: #ffffff;
+}
+
+.btn-secondary:hover {
+  background: #a73a00;
+}
+
+.hero {
+  background: var(--hero-orange);
+  color: #fff;
+  padding: 140px 16px 180px;
+  text-align: center;
+}
+
+.hero-inner {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.hero-icon {
+  border: none;      /* 원 제거 */
+  width: auto;
+  height: auto;
+  margin: 0 auto 24px;
+}
+
+.hero-icon {
+  font-size: 80px;   /* 큰 아이콘 */
+  margin-bottom: 24px;
+}
+
+.hero-title {
+  font-size: 32px;
+  font-weight: 700;
+  margin: 0 0 14px;
+}
+
+.hero-subtitle {
+  font-size: 16px;
+  line-height: 1.7;
+  margin: 0 0 32px;
+}
+
+/* ====== 메인 컨텐츠 ====== */
+
+.site-main {
+  padding-bottom: 40px;
+}
+
+/* 인기 레시피 섹션 */
+
+.recipe-list-section {
+  max-width: 1140px;
+  margin: 28px auto 0;
+  padding: 0 24px 40px;
+}
+
+.section-header h2 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 14px;
+}
+
+/* 레시피 카드 그리드 */
+
+.recipe-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.recipe-card {
+  background: #ffffff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.recipe-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.recipe-thumb img,
+.recipe-thumb .placeholder-thumb {
+  display: block;
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  background: #ddd;
+}
+
+.recipe-info {
+  padding: 12px 14px 14px;
+}
+
+.recipe-title {
+  font-size: 15px;
+  margin: 0 0 4px;
+}
+
+.recipe-desc {
+  font-size: 13px;
+  color: #666;
+  margin: 0 0 10px;
+}
+
+.recipe-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #888;
+}
+
+.recipe-author {
+  font-weight: 500;
+}
+
+.recipe-rating {
+  margin-left: auto;
+}
+
+/* 에러 텍스트 */
+
+.error {
+  color: #d9534f;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+/* 푸터 */
+
+.site-footer {
+  border-top: 1px solid #eee;
+  padding: 12px 0;
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+  background: #fff;
+}
+
+/* =========================
+   로그인 페이지
+   ========================= */
+
+.auth-page {
+  min-height: calc(100vh - 80px); /* 헤더 높이 빼고 대충 맞추기 */
+  padding: 60px 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f5f5f5;
+}
+
+.auth-card {
+  width: 420px;
+  max-width: 100%;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 40px 40px 32px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.auth-logo-circle {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  background: #ffe3cc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-logo-icon {
+  font-size: 32px;
+  color: var(--hero-orange);
+}
+
+.auth-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+
+.auth-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0 0 26px;
+}
+
+.auth-form {
+  text-align: left;
+}
+
+.auth-label {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
+.auth-label span {
+  font-weight: 500;
+}
+
+.auth-input {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  font-size: 14px;
+  outline: none;
+  background: #f9fafb;
+}
+
+.auth-input:focus {
+  border-color: var(--hero-orange);
+  background: #ffffff;
+}
+
+.auth-remember {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #6b7280;
+  margin: 8px 0 18px;
+}
+
+.auth-remember input {
+  width: 16px;
+  height: 16px;
+}
+
+.auth-submit {
+  width: 100%;
+  background: var(--hero-orange);
+  color: #ffffff;
+  font-size: 15px;
+  padding: 11px 0;
+  margin-top: 4px;
+}
+
+.auth-submit:hover {
+  background: #ff7326;
+}
+
+.auth-error {
+  margin-top: 8px;
+  text-align: center;
+}
+
+.auth-footer-text {
+  margin-top: 24px;
+  font-size: 13px;
+  color: #6b7280;
+  text-align: center;
+}
+
+.auth-link {
+  color: var(--hero-orange);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
+}
+
+/* =========================
+   마이페이지
+   ========================= */
+
+.mypage-page {
+  max-width: 1140px;
+  margin: 24px auto 40px;
+  padding: 0 24px 40px;
+}
+
+.mypage-profile-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 24px 28px 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  margin-bottom: 24px;
+}
+
+.mypage-profile-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.mypage-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #fff4e5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mypage-avatar-icon {
+  font-size: 34px;
+  color: var(--hero-orange);
+}
+
+.mypage-user-text {
+  flex: 1;
+}
+
+.mypage-username {
+  font-size: 22px;
+  margin: 0 0 4px;
+}
+
+.mypage-user-id {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0 0 2px;
+}
+
+.mypage-joined {
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+.mypage-settings-btn {
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  padding: 6px 16px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* 통계 영역 */
+
+.mypage-profile-stats {
+  display: flex;
+  justify-content: center;
+  gap: 80px;
+  padding-top: 18px;
+}
+
+.mypage-stat {
+  text-align: center;
+}
+
+.mypage-stat-icon {
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+.mypage-stat-number {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.mypage-stat-label {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* 탭 + 새 레시피 버튼 */
+
+.mypage-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.mypage-tab {
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  padding: 10px 8px;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.mypage-tab.active {
+  color: var(--hero-orange);
+  border-bottom: 2px solid var(--hero-orange);
+}
+
+.mypage-new-btn {
+  border: none;
+  border-radius: 999px;
+  background: var(--hero-orange);
+  color: #ffffff;
+  font-size: 14px;
+  padding: 8px 20px;
+  cursor: pointer;
+}
+
+/* 섹션 제목 */
+
+.mypage-section-title {
+  font-size: 14px;
+  margin: 8px 4px 12px;
+  color: #374151;
+}
+
+/* 기존 recipe-card 재사용 + 약간 여백 조정 */
+
+.mypage-recipe-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}

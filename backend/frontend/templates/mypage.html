@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}마이페이지 | 자취생의 창의 요리{% endblock %}
+
+{% block content %}
+<section class="mypage-page">
+
+  <!-- 상단 프로필 카드 -->
+  <div class="mypage-profile-card">
+    <div class="mypage-profile-main">
+      <div class="mypage-avatar">
+        <span class="mypage-avatar-icon">👤</span>
+      </div>
+      <div class="mypage-user-text">
+        <h1 class="mypage-username">요리왕김밥</h1>
+        <p class="mypage-user-id">@cookingking</p>
+        <p class="mypage-joined">가입일: 2024년 1월</p>
+      </div>
+      <button class="mypage-settings-btn">설정</button>
+    </div>
+
+    <div class="mypage-profile-stats">
+      <div class="mypage-stat">
+        <div class="mypage-stat-icon">📖</div>
+        <div class="mypage-stat-number">12</div>
+        <div class="mypage-stat-label">작성한 레시피</div>
+      </div>
+      <div class="mypage-stat">
+        <div class="mypage-stat-icon">❤️</div>
+        <div class="mypage-stat-number">234</div>
+        <div class="mypage-stat-label">받은 좋아요</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 탭 메뉴 -->
+  <div class="mypage-tabs">
+    <button class="mypage-tab active">내 레시피</button>
+    <button class="mypage-tab">좋아한 레시피</button>
+    <button class="mypage-tab">팔로잉</button>
+
+    <button class="mypage-new-btn">+ 레시피 등록</button>
+  </div>
+
+  <!-- 레시피 리스트 영역 -->
+  <div class="mypage-section-title">내가 작성한 레시피</div>
+
+  <div class="recipe-list mypage-recipe-list">
+    <!-- 여기 내용은 나중에 JS로 /api/recipes/에서 불러와서 채우면 됨 -->
+    <!-- 일단 샘플 카드만 2개 정도 넣어둘게 -->
+    <article class="recipe-card">
+      <a href="#" class="recipe-link">
+        <div class="recipe-thumb">
+          <div class="placeholder-thumb"></div>
+        </div>
+        <div class="recipe-info">
+          <h3 class="recipe-title">매콤한 비빔밥 한 그릇</h3>
+          <p class="recipe-desc">요리왕김밥</p>
+          <div class="recipe-meta">
+            <span>⏱ 15분</span>
+            <span>❤ 234</span>
+          </div>
+        </div>
+      </a>
+    </article>
+
+    <article class="recipe-card">
+      <a href="#" class="recipe-link">
+        <div class="recipe-thumb">
+          <div class="placeholder-thumb"></div>
+        </div>
+        <div class="recipe-info">
+          <h3 class="recipe-title">신선한 재료로 만드는 요리</h3>
+          <p class="recipe-desc">요리왕김밥</p>
+          <div class="recipe-meta">
+            <span>⏱ 25분</span>
+            <span>❤ 178</span>
+          </div>
+        </div>
+      </a>
+    </article>
+  </div>
+
+</section>
+{% endblock %}

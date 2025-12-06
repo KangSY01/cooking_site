@@ -3,20 +3,56 @@
 {% block title %}로그인 | 자취생의 창의 요리{% endblock %}
 
 {% block content %}
-<section class="login-container">
-  <h2>로그인</h2>
-  <form id="loginForm">
-    <label>
-      아이디
-      <input type="text" id="usernameInput" required>
-    </label>
-    <label>
-      비밀번호
-      <input type="password" id="passwordInput" required>
-    </label>
-    <button type="submit">로그인</button>
-    <p id="loginError" class="error"></p>
-  </form>
+<section class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo-circle">
+      <span class="auth-logo-icon">🍳</span>
+    </div>
 
+    <h2 class="auth-title">로그인</h2>
+    <p class="auth-subtitle">
+      자취생의 창의 요리에 오신 것을 환영합니다
+    </p>
+
+    <form id="loginForm" class="auth-form">
+      <label class="auth-label">
+        아이디
+        <input
+          type="text"
+          id="usernameInput"
+          class="auth-input"
+          placeholder="아이디를 입력하세요"
+          required
+        >
+      </label>
+
+      <label class="auth-label">
+        비밀번호
+        <input
+          type="password"
+          id="passwordInput"
+          class="auth-input"
+          placeholder="비밀번호를 입력하세요"
+          required
+        >
+      </label>
+
+      <label class="auth-remember">
+        <input type="checkbox" disabled>
+        <span>로그인 상태 유지</span>
+      </label>
+
+      <button type="submit" class="btn auth-submit">
+        로그인
+      </button>
+
+      <p id="loginError" class="error auth-error"></p>
+    </form>
+
+    <p class="auth-footer-text">
+      계정이 없으신가요?
+      <a href="#" class="auth-link">회원가입</a>
+    </p>
+  </div>
 </section>
 {% endblock %}
