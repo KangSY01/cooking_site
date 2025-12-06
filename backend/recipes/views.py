@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
 from django.db import transaction
+from django.db.models import Count
 
 from .jwt_utils import create_jwt
 from django.shortcuts import render, get_object_or_404
@@ -37,8 +38,51 @@ from .serializers import (
     ReportCreateSerializer,
     ReportListSerializer,
     ReportUpdateSerializer,
+    RecipeCreateSerializer,
+    MyRecipeSerializer,
+    MemberMeSerializer,
 )
 from .permissions import IsAuthorOrAdmin
+
+class MemberMeAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        # 현재 로그인 사용자를 기준으로 통계 붙이기
+        qs = (
+            Member.objects
+            .filter(pk=request.user.pk)
+            .annotate(
+                recipe_count=Count("recipes", distinct=True),
+                like_received_count=Count("recipes__likes", distinct=True),
+            )
+        )
+        me = qs.first()
+        serializer = MemberMeSerializer(me)
+        return Response(serializer.data)
+
+class LikedRecipeListAPIView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = MyRecipeSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        # 현재 로그인한 사용자가 좋아요한 레시피
+        return (
+            Recipe.objects.filter(likes__member=user)
+            .order_by("-likes__liked_at", "-created_at")
+            .distinct()
+        )
+
+class MyRecipeListAPIView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = MyRecipeSerializer
+
+    def get_queryset(self):
+        # JWT 인증으로 들어온 현재 로그인 사용자 기준
+        return Recipe.objects.filter(
+            author=self.request.user
+        ).order_by("-created_at")
 
 class RecipeListAPIView(generics.ListCreateAPIView):
     """
@@ -704,3 +748,64 @@ class AdminReportUpdateAPIView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+class RecipeCreateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+
+        # -----------------------------
+        # 1) FormData → Python dict 변환
+        # -----------------------------
+        ingredients = []
+        steps = []
+
+        # 재료 읽기
+        idx = 0
+        while True:
+            name_key = f"ingredients[{idx}][name]"
+            amount_key = f"ingredients[{idx}][amount]"
+
+            if name_key not in request.data:
+                break
+
+            ingredients.append({
+                "name": request.data[name_key],
+                "amount": request.data.get(amount_key, "")
+            })
+            idx += 1
+
+        # 단계 읽기
+        idx = 0
+        while True:
+            content_key = f"steps[{idx}][content]"
+            order_key = f"steps[{idx}][step_order]"
+
+            if content_key not in request.data:
+                break
+
+            steps.append({
+                "content": request.data[content_key],
+                "step_order": int(request.data[order_key]),
+            })
+            idx += 1
+
+        # -------------------------
+        # 2) Serializer 입력 데이터 구성
+        # -------------------------
+        data = {
+            "title": request.data.get("title"),
+            "description": request.data.get("description"),
+            "cooking_time": request.data.get("cooking_time"),
+            "image_path": request.data.get("image_path"),  # 나중에 S3 URL 저장
+            "ingredients": ingredients,
+            "steps": steps,
+        }
+
+        serializer = RecipeCreateSerializer(data=data)
+
+        if serializer.is_valid():
+            recipe = serializer.save(author=request.user)
+            return Response({"recipe_id": recipe.recipe_id}, status=201)
+
+        return Response(serializer.errors, status=400)

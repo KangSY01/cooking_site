@@ -17,13 +17,19 @@ from .views import (
     CommentReportCreateAPIView,    # ✅ 추가
     AdminReportListAPIView,        # ✅ 추가
     AdminReportUpdateAPIView,      # ✅ 추가
+    RecipeCreateView,
+    MyRecipeListAPIView,
+    LikedRecipeListAPIView,
 )
 
 app_name = 'recipes'
 
 urlpatterns = [
+    path("api/recipes/mine/", MyRecipeListAPIView.as_view(), name="my-recipe-list"),
+    path("api/recipes/liked/", LikedRecipeListAPIView.as_view(), name="liked-recipe-list"),
     # 레시피 목록 & 생성
     path('api/recipes/', RecipeListAPIView.as_view(), name='recipe-list'),
+    path('api/recipes/create/', RecipeCreateView.as_view(), name='recipe-create'),
 
     # 레시피 상세 / 수정 / 삭제
     path('api/recipes/<int:recipe_id>/', RecipeDetailAPIView.as_view(), name='recipe-detail'),

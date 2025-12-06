@@ -3,6 +3,10 @@
 {% block title %}마이페이지 | 자취생의 창의 요리{% endblock %}
 
 {% block content %}
+<style>
+  .mypage-tab-content { display: none; }
+  .mypage-tab-content.active { display: block; }
+</style>
 <section class="mypage-page">
 
   <!-- 상단 프로필 카드 -->
@@ -12,74 +16,300 @@
         <span class="mypage-avatar-icon">👤</span>
       </div>
       <div class="mypage-user-text">
-        <h1 class="mypage-username">요리왕김밥</h1>
-        <p class="mypage-user-id">@cookingking</p>
-        <p class="mypage-joined">가입일: 2024년 1월</p>
+        <h1 class="mypage-username" id="mypageName">요리왕김밥</h1>
+        <p class="mypage-user-id" id="mypageLoginId">@cookingking</p>
       </div>
-      <button class="mypage-settings-btn">설정</button>
+      <button class="mypage-settings-btn" id="logoutBtn">로그아웃</button>
     </div>
 
     <div class="mypage-profile-stats">
       <div class="mypage-stat">
         <div class="mypage-stat-icon">📖</div>
-        <div class="mypage-stat-number">12</div>
+        <div class="mypage-stat-number" id="mypageRecipeCount"></div>
         <div class="mypage-stat-label">작성한 레시피</div>
       </div>
       <div class="mypage-stat">
         <div class="mypage-stat-icon">❤️</div>
-        <div class="mypage-stat-number">234</div>
+        <div class="mypage-stat-number" id="mypageLikeCount"></div>
         <div class="mypage-stat-label">받은 좋아요</div>
       </div>
     </div>
   </div>
 
   <!-- 탭 메뉴 -->
-  <div class="mypage-tabs">
-    <button class="mypage-tab active">내 레시피</button>
-    <button class="mypage-tab">좋아한 레시피</button>
-    <button class="mypage-tab">팔로잉</button>
-
-    <button class="mypage-new-btn">+ 레시피 등록</button>
+<div class="mypage-tabs">
+  <div class="mypage-tabs-left">
+    <button class="mypage-tab active" data-tab="my">내 레시피</button>
+    <button class="mypage-tab" data-tab="liked">좋아한 레시피</button>
+    <button class="mypage-tab" data-tab="follow">팔로잉</button>
   </div>
 
-  <!-- 레시피 리스트 영역 -->
-  <div class="mypage-section-title">내가 작성한 레시피</div>
+  <button class="mypage-new-btn">새 레시피 작성</button>
+</div>
 
-  <div class="recipe-list mypage-recipe-list">
-    <!-- 여기 내용은 나중에 JS로 /api/recipes/에서 불러와서 채우면 됨 -->
-    <!-- 일단 샘플 카드만 2개 정도 넣어둘게 -->
-    <article class="recipe-card">
-      <a href="#" class="recipe-link">
-        <div class="recipe-thumb">
-          <div class="placeholder-thumb"></div>
-        </div>
-        <div class="recipe-info">
-          <h3 class="recipe-title">매콤한 비빔밥 한 그릇</h3>
-          <p class="recipe-desc">요리왕김밥</p>
-          <div class="recipe-meta">
-            <span>⏱ 15분</span>
-            <span>❤ 234</span>
-          </div>
-        </div>
-      </a>
-    </article>
+<!-- 내 레시피 -->
+<div class="mypage-tab-content active" data-content="my">
+  <div class="recipe-list mypage-recipe-list" id="myRecipeList"></div>
+</div>
 
-    <article class="recipe-card">
-      <a href="#" class="recipe-link">
-        <div class="recipe-thumb">
-          <div class="placeholder-thumb"></div>
-        </div>
-        <div class="recipe-info">
-          <h3 class="recipe-title">신선한 재료로 만드는 요리</h3>
-          <p class="recipe-desc">요리왕김밥</p>
-          <div class="recipe-meta">
-            <span>⏱ 25분</span>
-            <span>❤ 178</span>
+<!-- 좋아한 레시피 -->
+<div class="mypage-tab-content" data-content="liked">
+  <div class="recipe-list mypage-recipe-list" id="likedRecipeList"></div>
+</div>
+
+<!-- 팔로잉 -->
+<div class="mypage-tab-content" data-content="follow">
+  <div class="mypage-follow-list" id="followList"></div>
+</div>
+
+  <script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const token = localStorage.getItem("accessToken");
+  if (!token) {
+    alert("로그인 후 이용할 수 있는 페이지입니다.");
+    localStorage.setItem("nextUrl", window.location.pathname);
+    window.location.href = "/login/";
+    return;
+  }
+
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("nextUrl");
+      alert("로그아웃 되었습니다.");
+      window.location.href = "/";
+    });
+  }
+
+  const newRecipeBtn = document.querySelector(".mypage-new-btn");
+  if (newRecipeBtn) {
+    newRecipeBtn.addEventListener("click", () => {
+      window.location.href = "/recipes/new/";
+    });
+  }
+
+  // 현재 로그인한 member_id 저장용
+  let currentMemberId = null;
+
+  // ---------- 1) 내 레시피 로드 ----------
+  async function loadMyRecipes() {
+    const listEl = document.getElementById("myRecipeList");
+    if (!listEl) return;
+    listEl.innerHTML = "";
+
+    try {
+      const res = await fetch("/api/recipes/mine/", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => []);
+      if (!res.ok) {
+        console.error("내 레시피 목록 실패", res.status, data);
+        listEl.innerHTML = "<p class='empty-text'>레시피를 불러오지 못했습니다.</p>";
+        return;
+      }
+
+      const items = Array.isArray(data) ? data : data.results || [];
+      if (!items.length) {
+        listEl.innerHTML = "<p class='empty-text'>아직 작성한 레시피가 없습니다.</p>";
+        return;
+      }
+
+      items.forEach((recipe) => {
+        const card = document.createElement("article");
+        card.className = "recipe-card";
+        card.innerHTML = `
+          <a href="/recipes/${recipe.recipe_id}/" class="recipe-link">
+            <div class="recipe-thumb">
+              ${
+                recipe.image_path
+                  ? `<img src="${recipe.image_path}" alt="${recipe.title}" class="recipe-thumb-img">`
+                  : `<div class="placeholder-thumb"></div>`
+              }
+            </div>
+            <div class="recipe-info">
+              <h3 class="recipe-title">${recipe.title}</h3>
+              <p class="recipe-desc">${recipe.description ?? ""}</p>
+              <div class="recipe-meta">
+                <span>${recipe.cooking_time ? `⏱ ${recipe.cooking_time}분` : ""}</span>
+              </div>
+            </div>
+          </a>
+        `;
+        listEl.appendChild(card);
+      });
+    } catch (err) {
+      console.error(err);
+      listEl.innerHTML = "<p class='empty-text'>서버 오류로 레시피를 불러오지 못했습니다.</p>";
+    }
+  }
+
+  // ---------- 2) 좋아한 레시피 로드 ----------
+  async function loadLikedRecipes() {
+    const listEl = document.getElementById("likedRecipeList");
+    if (!listEl) return;
+    listEl.innerHTML = "";
+
+    try {
+      const res = await fetch("/api/recipes/liked/", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => []);
+      if (!res.ok) {
+        console.error("좋아요 레시피 목록 실패", res.status, data);
+        listEl.innerHTML = "<p class='empty-text'>레시피를 불러오지 못했습니다.</p>";
+        return;
+      }
+
+      const items = Array.isArray(data) ? data : data.results || [];
+      if (!items.length) {
+        listEl.innerHTML = "<p class='empty-text'>좋아한 레시피가 아직 없습니다.</p>";
+        return;
+      }
+
+      items.forEach((recipe) => {
+        const card = document.createElement("article");
+        card.className = "recipe-card";
+        card.innerHTML = `
+          <a href="/recipes/${recipe.recipe_id}/" class="recipe-link">
+            <div class="recipe-thumb">
+              ${
+                recipe.image_path
+                  ? `<img src="${recipe.image_path}" alt="${recipe.title}" class="recipe-thumb-img">`
+                  : `<div class="placeholder-thumb"></div>`
+              }
+            </div>
+            <div class="recipe-info">
+              <h3 class="recipe-title">${recipe.title}</h3>
+              <p class="recipe-desc">${recipe.description ?? ""}</p>
+              <div class="recipe-meta">
+                <span>${recipe.cooking_time ? `⏱ ${recipe.cooking_time}분` : ""}</span>
+              </div>
+            </div>
+          </a>
+        `;
+        listEl.appendChild(card);
+      });
+    } catch (err) {
+      console.error(err);
+      listEl.innerHTML = "<p class='empty-text'>서버 오류로 레시피를 불러오지 못했습니다.</p>";
+    }
+  }
+
+  // ---------- 3) 팔로잉 목록 로드 ----------
+  async function loadFollowing() {
+    const listEl = document.getElementById("followList");
+    if (!listEl || !currentMemberId) return;
+    listEl.innerHTML = "";
+
+    try {
+      const res = await fetch(`/api/members/${currentMemberId}/following/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => []);
+      if (!res.ok) {
+        console.error("팔로잉 목록 실패", res.status, data);
+        listEl.innerHTML = "<p class='empty-text'>팔로잉 목록을 불러오지 못했습니다.</p>";
+        return;
+      }
+
+      const items = Array.isArray(data) ? data : data.results || [];
+      if (!items.length) {
+        listEl.innerHTML = "<p class='empty-text'>아직 팔로잉한 사용자가 없습니다.</p>";
+        return;
+      }
+
+      items.forEach((member) => {
+        const row = document.createElement("div");
+        row.className = "follow-item";
+        row.innerHTML = `
+          <div class="follow-avatar">👤</div>
+          <div class="follow-text">
+            <div class="follow-name">${member.name ?? ""}</div>
+            <div class="follow-id">@${member.login_id ?? ""}</div>
           </div>
-        </div>
-      </a>
-    </article>
-  </div>
+        `;
+        listEl.appendChild(row);
+      });
+    } catch (err) {
+      console.error(err);
+      listEl.innerHTML = "<p class='empty-text'>서버 오류로 팔로잉 목록을 불러오지 못했습니다.</p>";
+    }
+  }
+
+  // ---------- 탭 클릭 처리 ----------
+  const tabs = document.querySelectorAll(".mypage-tab");
+  const tabContents = document.querySelectorAll(".mypage-tab-content");
+
+  function activateTab(tabName) {
+    tabs.forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.tab === tabName);
+    });
+    tabContents.forEach(box => {
+      box.classList.toggle("active", box.dataset.content === tabName);
+    });
+
+    // 탭마다 필요한 로딩 함수 호출
+    if (tabName === "my") loadMyRecipes();
+    if (tabName === "liked") loadLikedRecipes();
+    if (tabName === "follow") loadFollowing();
+  }
+
+  tabs.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const tabName = btn.dataset.tab;
+      activateTab(tabName);
+    });
+  });
+
+  // ---------- 내 정보 불러오기 + 초기 탭 로드 ----------
+  try {
+    const res = await fetch("/api/auth/me/", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      localStorage.removeItem("accessToken");
+      alert("로그인 정보가 만료되었습니다. 다시 로그인해주세요.");
+      window.location.href = "/login/";
+      return;
+    }
+
+    const data = await res.json();
+    currentMemberId = data.member_id;   // 팔로잉 API 호출용
+
+    const nameEl = document.getElementById("mypageName");
+    const loginIdEl = document.getElementById("mypageLoginId");
+    const joinedEl = document.getElementById("mypageJoined");
+
+    if (nameEl) nameEl.textContent = data.name || "(이름 없음)";
+    if (loginIdEl) {
+      const loginId = data.login_id || "";
+      loginIdEl.textContent = loginId ? `@${loginId}` : "";
+    }
+
+    const recipeCountEl = document.getElementById("mypageRecipeCount");
+const likeCountEl = document.getElementById("mypageLikeCount");
+
+if (recipeCountEl) {
+  recipeCountEl.textContent = data.recipe_count ?? 0;
+}
+if (likeCountEl) {
+  likeCountEl.textContent = data.like_received_count ?? 0;
+}
+
+    // 기본 탭은 "내 레시피"
+    activateTab("my");
+
+  } catch (err) {
+    console.error(err);
+    alert("서버와 통신 중 오류가 발생했습니다.");
+  }
+});
+</script>
+
 
 </section>
 {% endblock %}

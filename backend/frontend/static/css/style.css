@@ -554,3 +554,198 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
 }
+
+/* ============================
+   레시피 등록 페이지
+   ============================ */
+
+.recipe-create-page {
+  max-width: 800px;
+  margin: 24px auto;
+  padding: 0 16px 40px;
+}
+
+.go-back {
+  color: #ff5c00;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.page-title {
+  margin: 12px 0 24px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.form-label {
+  display: block;
+  margin: 16px 0 6px;
+  font-weight: 500;
+}
+
+.form-input,
+.form-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 15px;
+}
+
+.form-textarea {
+  height: 120px;
+  resize: none;
+}
+
+/* 이미지 업로드 박스 */
+.image-upload-box {
+  width: 100%;
+  border: 2px dashed #d6d3d1;
+  border-radius: 12px;
+  height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: #fafafa;
+  margin-bottom: 16px;
+}
+
+.upload-area {
+  text-align: center;
+}
+
+.upload-icon {
+  font-size: 36px;
+  margin-bottom: 6px;
+}
+
+.upload-text {
+  font-size: 14px;
+}
+
+.upload-sub {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* 행 */
+.row {
+  display: flex;
+  gap: 12px;
+}
+
+.col {
+  flex: 1;
+}
+
+/* 재료/단계 */
+.section-title {
+  display: flex;
+  justify-content: space-between;
+  margin: 18px 0 8px;
+}
+
+.add-btn {
+  background: none;
+  border: none;
+  color: #ff5c00;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.ingredient-row,
+.step-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.small {
+  max-width: 100px;
+}
+
+/* step 번호 */
+.step-number {
+  font-weight: 600;
+  margin-right: 6px;
+}
+
+/* 버튼 */
+.form-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.btn-cancel {
+  background: #f3f4f6;
+  padding: 10px 22px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-submit {
+  background: #ff5c00;
+  color: white;
+  padding: 10px 22px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+}
+
+/* 공통 동적 리스트 레이아웃 */
+.dynamic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 재료 행 */
+.ingredient-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ingredient-row .form-input.small {
+  max-width: 120px;
+}
+
+/* 조리 과정 행 */
+.step-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 왼쪽 주황색 동그라미 번호 */
+.step-badge {
+  width: 40px;
+  height: 40px;
+  background: #ff5c00;
+  color: #ffffff;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+/* 오른쪽 X 버튼 (재료/단계 공통) */
+.row-remove-btn {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 6px;
+}
+
+.row-remove-btn:hover {
+  color: #b91c1c;
+}

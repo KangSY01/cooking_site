@@ -15,3 +15,7 @@ def recipe_detail_page(request, recipe_id):
 def mypage(request):
     # 일단 템플릿만 렌더링, 실제 데이터는 JS로 불러오게 할 예정
     return render(request, "mypage.html")
+
+def recipe_create_page(request):
+    # 새 레시피 등록 페이지
+    return render(request, "recipes/create.html")

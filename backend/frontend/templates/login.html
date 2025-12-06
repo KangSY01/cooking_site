@@ -55,4 +55,70 @@
     </p>
   </div>
 </section>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("loginForm");
+  const usernameInput = document.getElementById("usernameInput");
+  const passwordInput = document.getElementById("passwordInput");
+  const errorEl = document.getElementById("loginError");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorEl.textContent = "";
+
+    const loginId = usernameInput.value.trim();
+    const password = passwordInput.value.trim();
+
+    if (!loginId || !password) {
+      errorEl.textContent = "아이디와 비밀번호를 입력해주세요.";
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/auth/login/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          // 백엔드 로그인 API가 기대하는 필드명에 맞추기
+          login_id: loginId,
+          password: password,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        console.error("로그인 실패", res.status, data);
+        errorEl.textContent = data.detail || "아이디 또는 비밀번호를 확인해주세요.";
+        return;
+      }
+
+            const data = await res.json();
+      console.log("로그인 성공 응답:", data);
+
+      const accessToken = data.access || data.token || data.access_token;
+      if (!accessToken) {
+        console.error("응답에 토큰이 없습니다.", data);
+        errorEl.textContent = "로그인 처리 중 오류가 발생했습니다.";
+        return;
+      }
+
+      // ✅ 토큰 저장
+      localStorage.setItem("accessToken", accessToken);
+
+      // ✅ nextUrl 이 있으면 거기로, 없으면 기본값으로
+      const nextUrl = localStorage.getItem("nextUrl") || "/mypage/";
+      localStorage.removeItem("nextUrl");
+
+      window.location.href = nextUrl;
+
+    } catch (err) {
+      console.error(err);
+      errorEl.textContent = "서버와 통신 중 오류가 발생했습니다.";
+    }
+  });
+});
+</script>
 {% endblock %}
+

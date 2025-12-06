@@ -14,6 +14,32 @@ from .models import (
     Report,
 )
 
+class MemberMeSerializer(serializers.ModelSerializer):
+    recipe_count = serializers.IntegerField(read_only=True)
+    like_received_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Member
+        fields = (
+            "member_id",
+            "login_id",
+            "name",
+            "created_at",
+            "recipe_count",
+            "like_received_count",
+        )
+
+class MyRecipeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Recipe
+        fields = (
+            "recipe_id",
+            "title",
+            "description",
+            "cooking_time",
+            "image_path",
+        )
+
 
 class MemberSimpleSerializer(serializers.ModelSerializer):
     class Meta:
@@ -316,3 +342,59 @@ class ReportUpdateSerializer(serializers.Serializer):
         required=False,
     )
     handle_note = serializers.CharField(required=False, allow_blank=True)
+
+# recipes/serializers.py
+
+from rest_framework import serializers
+from .models import Recipe, Ingredient, RecipeIngredient, RecipeStep
+
+
+class IngredientCreateSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    amount = serializers.CharField(allow_blank=True, required=False)
+
+
+class StepCreateSerializer(serializers.Serializer):
+    step_order = serializers.IntegerField()
+    content = serializers.CharField()
+
+
+class RecipeCreateSerializer(serializers.ModelSerializer):
+    ingredients = IngredientCreateSerializer(many=True, required=False)
+    steps = StepCreateSerializer(many=True, required=False)
+
+    class Meta:
+        model = Recipe
+        fields = [
+            'title',
+            'description',
+            'cooking_time',
+            'image_path',  # S3 URL or local path
+            'ingredients',
+            'steps',
+        ]
+
+    def create(self, validated_data):
+        ingredients_data = validated_data.pop("ingredients", [])
+        steps_data = validated_data.pop("steps", [])
+
+        recipe = Recipe.objects.create(**validated_data)
+
+        # 1) 재료 저장
+        for item in ingredients_data:
+            ing, _ = Ingredient.objects.get_or_create(name=item["name"])
+            RecipeIngredient.objects.create(
+                recipe=recipe,
+                ingredient=ing,
+                amount=item.get("amount")
+            )
+
+        # 2) 단계 저장
+        for step in steps_data:
+            RecipeStep.objects.create(
+                recipe=recipe,
+                step_order=step["step_order"],
+                content=step["content"]
+            )
+
+        return recipe
