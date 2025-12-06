@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}로그인 | 자취생의 창의 요리{% endblock %}
+
+{% block content %}
+<section class="login-container">
+  <h2>로그인</h2>
+  <form id="loginForm">
+    <label>
+      아이디
+      <input type="text" id="usernameInput" required>
+    </label>
+    <label>
+      비밀번호
+      <input type="password" id="passwordInput" required>
+    </label>
+    <button type="submit">로그인</button>
+    <p id="loginError" class="error"></p>
+  </form>
+</section>
+{% endblock %}

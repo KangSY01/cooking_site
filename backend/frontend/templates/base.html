@@ -1,0 +1,26 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}자취생의 창의 요리{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <script defer src="{% static 'js/auth.js' %}"></script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <header>
+    <h1><a href="/">자취생의 창의 요리</a></h1>
+    <nav>
+      <a href="/recipes/new/">레시피 등록</a>
+      <a href="/mypage/">마이페이지</a>
+      <button id="loginButton">로그인</button>
+      <button id="logoutButton" style="display:none;">로그아웃</button>
+    </nav>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
