@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}관리자 대시보드 | 자취생의 창의 요리{% endblock %}
+
+{% block content %}
+
+<style>
+  .admin-page {
+    max-width: 1200px;
+    margin: 40px auto 60px auto;
+    padding: 0 20px;
+  }
+
+  .admin-page h1 {
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .admin-page .sub-title {
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 24px;
+  }
+
+  /* 상단 통계 카드 4개 */
+  .admin-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .admin-stat-card {
+    background-color: #ffffff;
+    border-radius: 18px;
+    padding: 16px 18px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .admin-stat-label {
+    font-size: 13px;
+    color: #6b7280;
+  }
+
+  .admin-stat-value {
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .admin-stat-change {
+    font-size: 12px;
+    color: #22c55e;
+    margin-left: auto;
+  }
+
+  /* 하단 레이아웃: 신고내역 / 신규회원 */
+  .admin-bottom-grid {
+    display: grid;
+    grid-template-columns: 2fr 1.5fr;
+    gap: 20px;
+  }
+
+  .admin-panel {
+    background-color: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+    padding: 18px 20px;
+  }
+
+  .admin-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .admin-panel-title {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .admin-panel-link {
+    font-size: 12px;
+    color: #f97316;
+    cursor: pointer;
+  }
+
+  /* 신고 내역 리스트 */
+  .report-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .report-item {
+    border-radius: 12px;
+    background-color: #f9fafb;
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 2fr auto auto;
+    grid-template-rows: auto auto;
+    column-gap: 12px;
+    row-gap: 4px;
+    font-size: 13px;
+  }
+
+  .report-title {
+    font-weight: 600;
+  }
+
+  .report-subtext {
+    color: #6b7280;
+    grid-column: 1 / 4;
+  }
+
+  .report-date {
+    font-size: 12px;
+    color: #6b7280;
+    align-self: center;
+  }
+
+  .report-status {
+    font-size: 12px;
+    font-weight: 600;
+    align-self: center;
+  }
+
+  .report-status.processing {
+    color: #f97316;
+  }
+
+  .report-status.resolved {
+    color: #22c55e;
+  }
+
+  /* 신규 회원 리스트 */
+  .member-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .member-item {
+    border-radius: 999px;
+    background-color: #f9fafb;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+  }
+
+  .member-main {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .member-name {
+    font-weight: 600;
+  }
+
+  .member-email {
+    color: #6b7280;
+    font-size: 12px;
+  }
+
+  .member-meta {
+    text-align: right;
+    font-size: 12px;
+    color: #6b7280;
+  }
+</style>
+
+<section class="admin-page">
+  <h1>관리자 대시보드</h1>
+  <p class="sub-title">자취생의 창의 요리 관리 시스템</p>
+
+  <!-- 상단 통계 카드 4개 -->
+  <div class="admin-stats-grid">
+    <div class="admin-stat-card">
+      <div class="admin-stat-label">총 사용자</div>
+      <div class="admin-stat-value" id="statTotalUsers">-</div>
+      <div class="admin-stat-change" id="statTotalUsersChange">+0%</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-label">총 레시피</div>
+      <div class="admin-stat-value" id="statTotalRecipes">-</div>
+      <div class="admin-stat-change" id="statTotalRecipesChange">+0%</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-label">총 좋아요</div>
+      <div class="admin-stat-value" id="statTotalLikes">-</div>
+      <div class="admin-stat-change" id="statTotalLikesChange">+0%</div>
+    </div>
+  </div>
+
+  <!-- 하단: 신고 내역 / 신규 회원 -->
+  <div class="admin-bottom-grid">
+    <!-- 신고 내역 -->
+    <div class="admin-panel">
+      <div class="admin-panel-header">
+        <div class="admin-panel-title">신고 내역</div>
+        <div class="admin-panel-link" id="seeAllReportsBtn">전체보기</div>
+      </div>
+      <div id="reportList" class="report-list"></div>
+      <p id="reportError" class="error"></p>
+    </div>
+
+    <!-- 신규 회원 -->
+    <div class="admin-panel">
+      <div class="admin-panel-header">
+        <div class="admin-panel-title">신규 회원</div>
+        <div class="admin-panel-link" id="seeAllMembersBtn">전체보기</div>
+      </div>
+      <div id="memberList" class="member-list"></div>
+      <p id="memberError" class="error"></p>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

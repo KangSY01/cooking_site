@@ -14,16 +14,18 @@
     <label class="form-label">레시피 제목</label>
     <input type="text" class="form-input" id="titleInput" placeholder="예: 10분 만에 완성하는 김치볶음밥" required>
 
-    <!-- 이미지 업로드 -->
-    <label class="form-label">레시피 사진</label>
-    <div class="image-upload-box" id="imageUploadBox">
-      <input type="file" id="imageInput" accept="image/*" hidden>
-      <div class="upload-area">
-        <div class="upload-icon">⬆️</div>
-        <p class="upload-text">클릭하여 사진 업로드</p>
-        <p class="upload-sub">PNG, JPG (최대 10MB)</p>
-      </div>
-    </div>
+<!-- 이미지 업로드 -->
+<label class="form-label">레시피 사진</label>
+<div class="image-upload-box" id="imageUploadBox">
+  <!-- ✅ name="image" 추가 -->
+  <input type="file" id="imageInput" name="image" accept="image/*" hidden>
+  <div class="upload-area">
+    <div class="upload-icon">⬆️</div>
+    <p class="upload-text">클릭하여 사진 업로드</p>
+    <p class="upload-sub">PNG, JPG (최대 10MB)</p>
+  </div>
+</div>
+
 
     <!-- 설명 -->
     <label class="form-label">레시피 설명</label>
@@ -85,20 +87,21 @@
 </section>
 
 <script>
-
 document.addEventListener("DOMContentLoaded", function () {
-  // ============================
-  // 재료 추가 / 삭제
-  // ============================
-  const addIngredientBtn = document.getElementById("addIngredientBtn");
-  const ingredientList = document.getElementById("ingredientList");
+  // 0) 로그인 여부 확인 (토큰 키 통일)
+  const token =
+    localStorage.getItem("access") ||
+    localStorage.getItem("token");
 
-  const token = localStorage.getItem("accessToken");
   if (!token) {
     alert("로그인 후 레시피를 등록할 수 있습니다.");
-    window.location.href = "/login/";   // 실제 로그인 URL에 맞게
+    window.location.href = "/login/";
     return;
   }
+
+  // 재료 추가 / 삭제
+  const addIngredientBtn = document.getElementById("addIngredientBtn");
+  const ingredientList = document.getElementById("ingredientList");
 
   addIngredientBtn.addEventListener("click", () => {
     const row = document.createElement("div");
@@ -118,9 +121,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // ============================
   // 조리 단계 추가 / 삭제
-  // ============================
   const addStepBtn = document.getElementById("addStepBtn");
   const stepList = document.getElementById("stepList");
 
@@ -153,9 +154,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // ============================
   // 이미지 업로드 박스 클릭 시 파일 선택
-  // ============================
   const imageUploadBox = document.getElementById("imageUploadBox");
   const imageInput = document.getElementById("imageInput");
 
@@ -163,33 +162,33 @@ document.addEventListener("DOMContentLoaded", function () {
     imageInput.click();
   });
 
-  // ============================
   // 취소 버튼: 메인으로 이동
-  // ============================
   const cancelBtn = document.querySelector(".btn-cancel");
   cancelBtn.addEventListener("click", (e) => {
     e.preventDefault();
     window.location.href = "/";
   });
 
-  // ============================
-  // 폼 제출 -> /api/recipes/ 로 전송
-  // ============================
+  // 폼 제출 → /api/recipes/create/ (FormData + authFetch)
   const form = document.getElementById("recipeCreateForm");
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    // 1) 기본 정보
     const title = document.getElementById("titleInput").value.trim();
     const description = document.getElementById("descInput").value.trim();
     const cookingTime = document.getElementById("cookTimeInput").value.trim();
     const tagsRaw = document.getElementById("tagInput").value.trim();
 
-    // 2) 재료 배열
+    if (!title) {
+      alert("레시피 제목을 입력해주세요.");
+      return;
+    }
+
+    // 재료 배열
     const ingredientRows = document.querySelectorAll("#ingredientList .ingredient-row");
     const ingredients = [];
-    ingredientRows.forEach(row => {
+    ingredientRows.forEach((row) => {
       const [nameInput, amountInput] = row.querySelectorAll("input");
       const name = nameInput.value.trim();
       const amount = amountInput.value.trim();
@@ -198,54 +197,45 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
 
-    // 3) 단계 배열
+    // 단계 배열
     const stepRows = document.querySelectorAll("#stepList .step-row");
     const steps = [];
     stepRows.forEach((row, idx) => {
       const input = row.querySelector("input");
       const content = input.value.trim();
       if (content) {
-        steps.push({ order: idx + 1, content });
+        steps.push({ content, step_order: idx + 1 });
       }
     });
 
-        // 4) FormData 구성 (이미지 + 나머지)
     const fd = new FormData();
     fd.append("title", title);
     fd.append("description", description);
     fd.append("cooking_time", cookingTime);
-    fd.append("tags", tagsRaw);  // 태그는 나중에 백엔드에서 처리
+    fd.append("tags", tagsRaw);
 
-    // 재료: ingredients[0][name], ingredients[0][amount] ...
     ingredients.forEach((ing, idx) => {
       fd.append(`ingredients[${idx}][name]`, ing.name);
       fd.append(`ingredients[${idx}][amount]`, ing.amount);
     });
 
-    // 단계: steps[0][content], steps[0][step_order] ...
     steps.forEach((step, idx) => {
       fd.append(`steps[${idx}][content]`, step.content);
-      fd.append(`steps[${idx}][step_order]`, idx + 1);
+      fd.append(`steps[${idx}][step_order]`, step.step_order);
     });
 
-    if (imageInput.files[0]) {
-      fd.append("image", imageInput.files[0]);  // 지금은 서버에서 안 써도 괜찮음
+    if (imageInput.files && imageInput.files[0]) {
+      fd.append("image", imageInput.files[0]); // 백엔드에서 request.FILES["image"]
     }
 
-
-    // 5) 토큰 넣어서 API 호출
-    const token = localStorage.getItem("accessToken");  // auth.js에서 쓰는 키와 맞춰야 함
+    // 디버깅하고 싶으면 이거 잠깐 켜보면 됨
+    // console.log([...fd.entries()]);
 
     try {
-      const res = await fetch("/api/recipes/create/", {
+      const res = await authFetch("/api/recipes/create/", {
         method: "POST",
-        headers: {
-          Authorization: token ? `Bearer ${token}` : "",
-          // FormData 쓸 때는 Content-Type 직접 설정 X
-        },
         body: fd,
       });
-
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
@@ -254,9 +244,14 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
-      // const data = await res.json();  // 필요하면 응답 데이터 사용
+      const data = await res.json().catch(() => ({}));
       alert("레시피가 등록되었습니다!");
-      window.location.href = "/";  // 일단 메인으로 이동
+
+      if (data.recipe_id) {
+        window.location.href = `/recipes/${data.recipe_id}/`;
+      } else {
+        window.location.href = "/";
+      }
     } catch (err) {
       console.error(err);
       alert("서버와 통신 중 오류가 발생했습니다.");
@@ -264,4 +259,6 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 </script>
+
+
 {% endblock %}

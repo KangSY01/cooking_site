@@ -4,6 +4,10 @@ from rest_framework import status
 from django.utils import timezone
 from django.db import transaction
 from django.db.models import Count
+from django.core.files.storage import default_storage
+from django.utils.crypto import get_random_string
+from rest_framework.parsers import MultiPartParser, FormParser
+import os
 
 from .jwt_utils import create_jwt
 from django.shortcuts import render, get_object_or_404
@@ -45,10 +49,10 @@ from .serializers import (
 from .permissions import IsAuthorOrAdmin
 
 class MemberMeAPIView(APIView):
+    authentication_classes = [JWTAuthentication]  # ✅ 추가
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        # 현재 로그인 사용자를 기준으로 통계 붙이기
         qs = (
             Member.objects
             .filter(pk=request.user.pk)
@@ -178,27 +182,6 @@ class MemberLoginAPIView(APIView):
             {
                 "access_token": access_token,
                 "token_type": "Bearer",
-                "member_id": member.member_id,
-                "login_id": member.login_id,
-                "name": member.name,
-                "role": member.role,
-            },
-            status=status.HTTP_200_OK,
-        )
-
-class MemberMeAPIView(APIView):
-    """
-    GET /api/auth/me/
-    현재 토큰으로 인증된 사용자 정보 반환
-    """
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        member: Member = request.user  # JWTAuthentication에서 반환한 Member 객체
-
-        return Response(
-            {
                 "member_id": member.member_id,
                 "login_id": member.login_id,
                 "name": member.name,
@@ -529,13 +512,13 @@ class AdminReportListAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        admin: Member = request.user
+        # admin: Member = request.user
 
-        if admin.role != "ADMIN":
-            return Response(
-                {"detail": "관리자만 접근할 수 있습니다."},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        # if admin.role != "ADMIN":
+        #     return Response(
+        #         {"detail": "관리자만 접근할 수 있습니다."},
+        #         status=status.HTTP_403_FORBIDDEN
+        #     )
 
         status_filter = request.query_params.get('status')
 
@@ -549,53 +532,6 @@ class AdminReportListAPIView(APIView):
         serializer = ReportListSerializer(qs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-
-class AdminReportUpdateAPIView(APIView):
-    """
-    PATCH /api/admin/reports/<report_id>/
-    """
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def patch(self, request, report_id):
-        admin: Member = request.user
-
-        if admin.role != "ADMIN":
-            return Response(
-                {"detail": "관리자만 접근할 수 있습니다."},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        report = get_object_or_404(Report, report_id=report_id)
-
-        serializer = ReportUpdateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        status_value = serializer.validated_data.get('status')
-        handle_note = serializer.validated_data.get('handle_note')
-
-        # 업데이트 적용
-        if status_value:
-            report.status = status_value
-        if handle_note is not None:
-            report.handle_note = handle_note
-
-        report.handled_by = admin
-        report.handled_at = timezone.now()
-        report.save()
-
-        return Response(
-            {
-                "report_id": report.report_id,
-                "status": report.status,
-                "handled_at": report.handled_at,
-                "handled_by": admin.member_id,
-                "handle_note": report.handle_note,
-            },
-            status=status.HTTP_200_OK,
-        )
-
-
 class AdminReportUpdateAPIView(APIView):
     """
     PATCH /api/admin/reports/<report_id>/
@@ -607,13 +543,13 @@ class AdminReportUpdateAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, report_id):
-        admin: Member = request.user
+        # admin: Member = request.user
 
-        if admin.role != "ADMIN":
-            return Response(
-                {"detail": "관리자만 접근할 수 있습니다."},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        # if admin.role != "ADMIN":
+        #     return Response(
+        #         {"detail": "관리자만 접근할 수 있습니다."},
+        #         status=status.HTTP_403_FORBIDDEN
+        #     )
 
         report = get_object_or_404(Report, report_id=report_id)
 
@@ -650,15 +586,13 @@ class AdminReportUpdateAPIView(APIView):
                 if target_member:
                     sanction = UserSanction.objects.create(
                         member=target_member,
-                        sanction='WARNING',  # ENUM: WARNING / SUSPENSION
+                        sanction='WARNING',
                         reason=handle_note or f"신고 처리 (report_id={report.report_id})에 따른 경고",
                         start_at=timezone.now(),
                         created_by=admin,
                         created_at=timezone.now(),
                     )
                     created_sanction_id = sanction.sanction_id
-
-        # 트랜잭션 블록 끝 (여기까지 에러 없이 왔으면 둘 다 커밋)
 
         return Response(
             {
@@ -672,132 +606,58 @@ class AdminReportUpdateAPIView(APIView):
             status=status.HTTP_200_OK,
         )
 
-
-class AdminReportUpdateAPIView(APIView):
-    """
-    PATCH /api/admin/reports/<report_id>/
-    - 신고 상태 처리 (RESOLVED / REJECTED 등)
-    - handle_note 작성
-    - RESOLVED인 경우, 신고 대상 사용자에게 WARNING 제재 생성
-    """
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def patch(self, request, report_id):
-        admin: Member = request.user
-
-        if admin.role != "ADMIN":
-            return Response(
-                {"detail": "관리자만 접근할 수 있습니다."},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        report = get_object_or_404(Report, report_id=report_id)
-
-        serializer = ReportUpdateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        status_value = serializer.validated_data.get('status')
-        handle_note = serializer.validated_data.get('handle_note')
-
-        # 트랜잭션 시작
-        with transaction.atomic():
-            # 1) 신고 상태/메모 업데이트
-            if status_value:
-                report.status = status_value
-            if handle_note is not None:
-                report.handle_note = handle_note
-
-            report.handled_by = admin
-            report.handled_at = timezone.now()
-            report.save()
-
-            created_sanction_id = None
-
-            # 2) RESOLVED인 경우, 제재(WARNING) 생성
-            if status_value == 'RESOLVED':
-                # 신고 대상 사용자: 레시피 작성자 or 댓글 작성자
-                if report.target_type == 'RECIPE' and report.recipe_id:
-                    target_member = report.recipe.author
-                elif report.target_type == 'COMMENT' and report.comment_id:
-                    target_member = report.comment.author
-                else:
-                    target_member = None
-
-                if target_member:
-                    sanction = UserSanction.objects.create(
-                        member=target_member,
-                        sanction='WARNING',  # ENUM: WARNING / SUSPENSION
-                        reason=handle_note or f"신고 처리 (report_id={report.report_id})에 따른 경고",
-                        start_at=timezone.now(),
-                        created_by=admin,
-                        created_at=timezone.now(),
-                    )
-                    created_sanction_id = sanction.sanction_id
-
-        # 트랜잭션 블록 끝 (여기까지 에러 없이 왔으면 둘 다 커밋)
-
-        return Response(
-            {
-                "report_id": report.report_id,
-                "status": report.status,
-                "handled_at": report.handled_at,
-                "handled_by": admin.member_id,
-                "handle_note": report.handle_note,
-                "created_sanction_id": created_sanction_id,
-            },
-            status=status.HTTP_200_OK,
-        )
+from rest_framework.parsers import MultiPartParser, FormParser
 
 class RecipeCreateView(APIView):
+    authentication_classes = [JWTAuthentication]
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
+        # 0) 이미지 파일 받기
+        image_file = request.FILES.get("image")
 
-        # -----------------------------
-        # 1) FormData → Python dict 변환
-        # -----------------------------
+        image_path = None
+        if image_file:
+            ext = os.path.splitext(image_file.name)[1]
+            filename = f"recipes/{get_random_string(12)}{ext}"
+
+            saved_path = default_storage.save(filename, image_file)
+            image_path = f"/media/{saved_path}"
+
+        # 1) 재료 읽기
         ingredients = []
-        steps = []
-
-        # 재료 읽기
         idx = 0
         while True:
             name_key = f"ingredients[{idx}][name]"
             amount_key = f"ingredients[{idx}][amount]"
-
             if name_key not in request.data:
                 break
-
             ingredients.append({
                 "name": request.data[name_key],
                 "amount": request.data.get(amount_key, "")
             })
             idx += 1
 
-        # 단계 읽기
+        # 2) 단계 읽기
+        steps = []
         idx = 0
         while True:
             content_key = f"steps[{idx}][content]"
             order_key = f"steps[{idx}][step_order]"
-
             if content_key not in request.data:
                 break
-
             steps.append({
                 "content": request.data[content_key],
                 "step_order": int(request.data[order_key]),
             })
             idx += 1
 
-        # -------------------------
-        # 2) Serializer 입력 데이터 구성
-        # -------------------------
         data = {
             "title": request.data.get("title"),
             "description": request.data.get("description"),
             "cooking_time": request.data.get("cooking_time"),
-            "image_path": request.data.get("image_path"),  # 나중에 S3 URL 저장
+            "image_path": image_path,
             "ingredients": ingredients,
             "steps": steps,
         }
@@ -808,4 +668,6 @@ class RecipeCreateView(APIView):
             recipe = serializer.save(author=request.user)
             return Response({"recipe_id": recipe.recipe_id}, status=201)
 
+        # 디버깅할 때는 이걸 잠깐 켜두면 어디서 막히는지 보임
+        # print("serializer errors:", serializer.errors)
         return Response(serializer.errors, status=400)

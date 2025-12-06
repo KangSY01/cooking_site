@@ -30,6 +30,10 @@
     <span class="nav-icon">👤</span>
     <span class="nav-label">마이페이지</span>
   </a>
+  <a href="{% url 'admin-dashboard' %}" class="nav-link admin-nav" id="adminNavLink">
+    <span class="nav-icon">🏛</span>
+    <span class="nav-label">관리자</span>
+  </a>
 </nav>
 
 <a href="/login/" class="btn btn-login" id="headerLoginBtn">로그인</a>
@@ -45,6 +49,8 @@
     <p>&copy; 자취생의 창의 요리</p>
   </footer>
 
-  <script src="{% static 'js/auth.js' %}"></script>
+<!-- admin_dashboard.html 또는 관리자 페이지 템플릿 -->
+<script src="/static/js/auth.js"></script>
+<script src="/static/js/admin_dashboard.js"></script>
 </body>
 </html>

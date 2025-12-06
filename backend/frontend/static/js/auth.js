@@ -1,25 +1,40 @@
 // frontend/static/js/auth.js
 
 // 공통: 인증 토큰 붙여서 fetch하는 함수
+// 공통: 인증 토큰 붙여서 fetch하는 함수
+// frontend/static/js/auth.js
+
+// 공통: 인증 토큰 붙여서 fetch하는 함수
 async function authFetch(url, options = {}) {
   const access =
     localStorage.getItem("access") ||
     localStorage.getItem("token");
 
-  const headers = options.headers || {};
+  const headers = options.headers ? { ...options.headers } : {};
 
   if (access) {
     headers["Authorization"] = `Bearer ${access}`;
   }
 
+  // body가 FormData인지 체크
+  const isFormData = options.body instanceof FormData;
+
   return fetch(url, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-    },
+    headers: isFormData
+      ? {
+          // ✅ FormData일 때는 Content-Type 직접 지정하지 않는다
+          // 브라우저가 boundary 붙여서 multipart/form-data로 자동 설정해야 파일이 정상 전송됨
+          ...headers,
+        }
+      : {
+          // JSON 요청일 때만 application/json
+          "Content-Type": "application/json",
+          ...headers,
+        },
   });
 }
+
 
 document.addEventListener("DOMContentLoaded", () => {
   // 1) 로그인 폼 처리
@@ -61,10 +76,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const data = await response.json();
 
-        // 백엔드 응답 구조에 맞춰 저장
+        // 🔥 백엔드 응답 구조에 맞게 토큰 저장
+        // MemberLoginAPIView 가 access_token 키로 JWT를 내려준다.
+        if (data.access_token) {
+          localStorage.setItem("access", data.access_token);
+        }
+
+        // 혹시 나중에 DRF SimpleJWT 등으로 바뀌어 "access" 가 올 수도 있으니 같이 처리
         if (data.access) {
           localStorage.setItem("access", data.access);
         }
+
+        // 기존에 쓸 수도 있는 값들 그대로 유지 (필요 없으면 나중에 제거 가능)
         if (data.refresh) {
           localStorage.setItem("refresh", data.refresh);
         }
@@ -87,25 +110,27 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // 2) 메인 페이지: 레시피 목록 로딩
   const recipeListEl = document.getElementById("recipeList");
   if (recipeListEl) {
     loadRecipeList(recipeListEl);
   }
 
-  // 2) "레시피 둘러보기" 버튼 클릭 시 인기 레시피로 스크롤
+  // 3) "레시피 둘러보기" 버튼 클릭 시 인기 레시피 제목까지 스크롤
   const scrollBtn = document.getElementById("scrollToPopularBtn");
-const titleEl = document.querySelector("#popular-recipes .section-header h2");
+  const titleEl = document.querySelector("#popular-recipes .section-header h2");
 
-if (scrollBtn && titleEl) {
-  scrollBtn.addEventListener("click", () => {
-  const y = titleEl.getBoundingClientRect().top + window.pageYOffset - 80; 
-  window.scrollTo({ top: y, behavior: "smooth" });
-});
-}
+  if (scrollBtn && titleEl) {
+    scrollBtn.addEventListener("click", () => {
+      const y =
+        titleEl.getBoundingClientRect().top +
+        window.pageYOffset -
+        80; // 헤더 높이 만큼 보정
+      window.scrollTo({ top: y, behavior: "smooth" });
+    });
+  }
 
-
-
-  // 3) 🔥 레시피 상세 페이지라면 상세 불러오기 (여기가 새로 추가되는 부분)
+  // 4) 레시피 상세 페이지라면 상세 불러오기
   const detailSection = document.querySelector(".recipe-detail-container");
   if (detailSection) {
     const recipeId = detailSection.dataset.recipeId;
@@ -115,7 +140,33 @@ if (scrollBtn && titleEl) {
     }
   }
 
-  
+  // 5) 관리자 메뉴 노출 여부 결정
+  const adminNavLink = document.getElementById("adminNavLink");
+  const token =
+    localStorage.getItem("access") ||
+    localStorage.getItem("token");
+
+  if (adminNavLink && token) {
+    authFetch("/api/auth/me/")
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then((data) => {
+        if (!data) return;
+
+        const role =
+          data.role ||
+          data.user_role ||
+          data.member_role ||
+          null;
+
+        if (role === "ADMIN") {
+          adminNavLink.style.display = "inline-flex";
+        }
+      })
+      .catch((err) => console.error("me error:", err));
+  }
 });
 
 // 레시피 목록 불러오기
@@ -153,7 +204,6 @@ async function loadRecipeList(container) {
     container.innerHTML = "";
 
     data.forEach((recipe) => {
-      // ⚠️ 여기는 네 RecipeListSerializer 필드 이름에 맞게 수정해야 함
       const {
         recipe_id,
         title,
@@ -190,13 +240,14 @@ async function loadRecipeList(container) {
     });
   } catch (err) {
     console.error(err);
-    if (errorEl) {
-      errorEl.textContent = "레시피 데이터를 불러오는 중 오류가 발생했습니다.";
+    const errorEl2 = document.getElementById("recipeError");
+    if (errorEl2) {
+      errorEl2.textContent = "레시피 데이터를 불러오는 중 오류가 발생했습니다.";
     }
   }
 }
 
-// 🔥 여기부터가 새로 추가되는 상세 페이지 로딩 함수
+// 레시피 상세 페이지 로딩
 async function loadRecipeDetail(recipeId, container) {
   const errorEl = document.getElementById("recipeDetailError");
   if (errorEl) errorEl.textContent = "";
@@ -221,9 +272,8 @@ async function loadRecipeDetail(recipeId, container) {
 
     const recipe = await response.json();
 
-    // ⚠️ 여기도 네 RecipeDetailSerializer 필드 이름에 맞게 나중에 조정
     const {
-      recipe_id,
+      recipe_id: id,
       title,
       description,
       author_name,

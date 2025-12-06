@@ -141,3 +141,6 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.AllowAny",  # 기본은 모두 허용, 필요한 view에서만 로그인 강제
     ],
 }
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
