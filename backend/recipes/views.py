@@ -1,13 +1,24 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.utils import timezone
+from django.db import transaction
 
 from .jwt_utils import create_jwt
-from django.shortcuts import render
-from .authentication import JWTAuthentication
-from .models import Recipe, RecipeComment, Member, RecipeLike, Rating, Follow
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from django.shortcuts import render, get_object_or_404
+from .authentication import JWTAuthentication
+from .models import (
+    Recipe,
+    RecipeComment,
+    Member,
+    RecipeLike,
+    Rating,
+    Follow,
+    RecipeSummary,
+    Report,
+    UserSanction,
+)
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 
 # Create your views here.
 from rest_framework import generics, permissions
@@ -21,6 +32,11 @@ from .serializers import (
     RecipeCreateUpdateSerializer,
     RatingCreateUpdateSerializer,
     RecipeCommentCreateSerializer,
+    MemberSimpleSerializer,
+    PopularRecipeSerializer,
+    ReportCreateSerializer,
+    ReportListSerializer,
+    ReportUpdateSerializer,
 )
 from .permissions import IsAuthorOrAdmin
 
@@ -357,3 +373,334 @@ class FollowingListAPIView(APIView):
 
         data = MemberSimpleSerializer(followings, many=True).data
         return Response(data, status=status.HTTP_200_OK)
+
+
+class PopularRecipeListAPIView(generics.ListAPIView):
+    """
+    GET /api/recipes/popular/
+    v_recipe_summary 뷰를 기반으로 한 인기 레시피 목록
+    """
+    queryset = RecipeSummary.objects.all().order_by(
+        '-like_count',
+        '-avg_score',
+        '-rating_count',
+        '-comment_count',
+        '-recipe_id',
+    )
+    serializer_class = PopularRecipeSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class RecipeReportCreateAPIView(APIView):
+    """
+    POST /api/recipes/<recipe_id>/report/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, recipe_id):
+        reporter: Member = request.user
+        recipe = get_object_or_404(Recipe, recipe_id=recipe_id)
+
+        serializer = ReportCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        reason = serializer.validated_data['reason']
+
+        # 유저가 이미 PENDING 신고를 보낸 경우 막기
+        existing = Report.objects.filter(
+            reporter=reporter,
+            target_type='RECIPE',
+            recipe=recipe,
+            status='PENDING'
+        ).first()
+
+        if existing:
+            return Response(
+                {"detail": "이미 처리 대기 중인 신고가 있습니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        report = Report.objects.create(
+            reporter=reporter,
+            target_type='RECIPE',
+            recipe=recipe,
+            reason=reason,
+            status='PENDING',
+            created_at=timezone.now(),
+        )
+
+        return Response(
+            {"report_id": report.report_id, "message": "신고가 접수되었습니다."},
+            status=status.HTTP_201_CREATED
+        )
+
+class CommentReportCreateAPIView(APIView):
+    """
+    POST /api/comments/<comment_id>/report/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, comment_id):
+        reporter: Member = request.user
+        comment = get_object_or_404(RecipeComment, comment_id=comment_id)
+
+        serializer = ReportCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        reason = serializer.validated_data['reason']
+
+        existing = Report.objects.filter(
+            reporter=reporter,
+            target_type='COMMENT',
+            comment=comment,
+            status='PENDING'
+        ).first()
+
+        if existing:
+            return Response(
+                {"detail": "이미 처리 대기 중인 신고가 있습니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        report = Report.objects.create(
+            reporter=reporter,
+            target_type='COMMENT',
+            comment=comment,
+            reason=reason,
+            status='PENDING',
+            created_at=timezone.now(),
+        )
+
+        return Response(
+            {"report_id": report.report_id, "message": "신고가 접수되었습니다."},
+            status=status.HTTP_201_CREATED
+        )
+
+
+class AdminReportListAPIView(APIView):
+    """
+    GET /api/admin/reports/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        admin: Member = request.user
+
+        if admin.role != "ADMIN":
+            return Response(
+                {"detail": "관리자만 접근할 수 있습니다."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        status_filter = request.query_params.get('status')
+
+        qs = Report.objects.select_related('reporter', 'handled_by').order_by('-created_at')
+
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        else:
+            qs = qs.filter(status='PENDING')
+
+        serializer = ReportListSerializer(qs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class AdminReportUpdateAPIView(APIView):
+    """
+    PATCH /api/admin/reports/<report_id>/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, report_id):
+        admin: Member = request.user
+
+        if admin.role != "ADMIN":
+            return Response(
+                {"detail": "관리자만 접근할 수 있습니다."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        report = get_object_or_404(Report, report_id=report_id)
+
+        serializer = ReportUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        status_value = serializer.validated_data.get('status')
+        handle_note = serializer.validated_data.get('handle_note')
+
+        # 업데이트 적용
+        if status_value:
+            report.status = status_value
+        if handle_note is not None:
+            report.handle_note = handle_note
+
+        report.handled_by = admin
+        report.handled_at = timezone.now()
+        report.save()
+
+        return Response(
+            {
+                "report_id": report.report_id,
+                "status": report.status,
+                "handled_at": report.handled_at,
+                "handled_by": admin.member_id,
+                "handle_note": report.handle_note,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class AdminReportUpdateAPIView(APIView):
+    """
+    PATCH /api/admin/reports/<report_id>/
+    - 신고 상태 처리 (RESOLVED / REJECTED 등)
+    - handle_note 작성
+    - RESOLVED인 경우, 신고 대상 사용자에게 WARNING 제재 생성
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, report_id):
+        admin: Member = request.user
+
+        if admin.role != "ADMIN":
+            return Response(
+                {"detail": "관리자만 접근할 수 있습니다."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        report = get_object_or_404(Report, report_id=report_id)
+
+        serializer = ReportUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        status_value = serializer.validated_data.get('status')
+        handle_note = serializer.validated_data.get('handle_note')
+
+        # 트랜잭션 시작
+        with transaction.atomic():
+            # 1) 신고 상태/메모 업데이트
+            if status_value:
+                report.status = status_value
+            if handle_note is not None:
+                report.handle_note = handle_note
+
+            report.handled_by = admin
+            report.handled_at = timezone.now()
+            report.save()
+
+            created_sanction_id = None
+
+            # 2) RESOLVED인 경우, 제재(WARNING) 생성
+            if status_value == 'RESOLVED':
+                # 신고 대상 사용자: 레시피 작성자 or 댓글 작성자
+                if report.target_type == 'RECIPE' and report.recipe_id:
+                    target_member = report.recipe.author
+                elif report.target_type == 'COMMENT' and report.comment_id:
+                    target_member = report.comment.author
+                else:
+                    target_member = None
+
+                if target_member:
+                    sanction = UserSanction.objects.create(
+                        member=target_member,
+                        sanction='WARNING',  # ENUM: WARNING / SUSPENSION
+                        reason=handle_note or f"신고 처리 (report_id={report.report_id})에 따른 경고",
+                        start_at=timezone.now(),
+                        created_by=admin,
+                        created_at=timezone.now(),
+                    )
+                    created_sanction_id = sanction.sanction_id
+
+        # 트랜잭션 블록 끝 (여기까지 에러 없이 왔으면 둘 다 커밋)
+
+        return Response(
+            {
+                "report_id": report.report_id,
+                "status": report.status,
+                "handled_at": report.handled_at,
+                "handled_by": admin.member_id,
+                "handle_note": report.handle_note,
+                "created_sanction_id": created_sanction_id,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class AdminReportUpdateAPIView(APIView):
+    """
+    PATCH /api/admin/reports/<report_id>/
+    - 신고 상태 처리 (RESOLVED / REJECTED 등)
+    - handle_note 작성
+    - RESOLVED인 경우, 신고 대상 사용자에게 WARNING 제재 생성
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, report_id):
+        admin: Member = request.user
+
+        if admin.role != "ADMIN":
+            return Response(
+                {"detail": "관리자만 접근할 수 있습니다."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        report = get_object_or_404(Report, report_id=report_id)
+
+        serializer = ReportUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        status_value = serializer.validated_data.get('status')
+        handle_note = serializer.validated_data.get('handle_note')
+
+        # 트랜잭션 시작
+        with transaction.atomic():
+            # 1) 신고 상태/메모 업데이트
+            if status_value:
+                report.status = status_value
+            if handle_note is not None:
+                report.handle_note = handle_note
+
+            report.handled_by = admin
+            report.handled_at = timezone.now()
+            report.save()
+
+            created_sanction_id = None
+
+            # 2) RESOLVED인 경우, 제재(WARNING) 생성
+            if status_value == 'RESOLVED':
+                # 신고 대상 사용자: 레시피 작성자 or 댓글 작성자
+                if report.target_type == 'RECIPE' and report.recipe_id:
+                    target_member = report.recipe.author
+                elif report.target_type == 'COMMENT' and report.comment_id:
+                    target_member = report.comment.author
+                else:
+                    target_member = None
+
+                if target_member:
+                    sanction = UserSanction.objects.create(
+                        member=target_member,
+                        sanction='WARNING',  # ENUM: WARNING / SUSPENSION
+                        reason=handle_note or f"신고 처리 (report_id={report.report_id})에 따른 경고",
+                        start_at=timezone.now(),
+                        created_by=admin,
+                        created_at=timezone.now(),
+                    )
+                    created_sanction_id = sanction.sanction_id
+
+        # 트랜잭션 블록 끝 (여기까지 에러 없이 왔으면 둘 다 커밋)
+
+        return Response(
+            {
+                "report_id": report.report_id,
+                "status": report.status,
+                "handled_at": report.handled_at,
+                "handled_by": admin.member_id,
+                "handle_note": report.handle_note,
+                "created_sanction_id": created_sanction_id,
+            },
+            status=status.HTTP_200_OK,
+        )

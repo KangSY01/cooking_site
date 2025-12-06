@@ -276,3 +276,27 @@ class UserSanction(models.Model):
     class Meta:
         managed = False
         db_table = 'user_sanction'
+
+
+class RecipeSummary(models.Model):
+    """
+    PostgreSQL VIEW: v_recipe_summary 매핑용 모델
+    인기 레시피 목록에서 사용
+    """
+    recipe_id = models.IntegerField(primary_key=True)
+    title = models.CharField(max_length=150)
+    description = models.TextField()
+    cooking_time = models.IntegerField(null=True)
+    avg_score = models.DecimalField(max_digits=3, decimal_places=2)
+    rating_count = models.IntegerField()
+    like_count = models.IntegerField()
+    comment_count = models.IntegerField()
+
+    class Meta:
+        managed = False           # Django가 생성/수정하지 않음
+        db_table = 'v_recipe_summary'
+        # 기본 정렬 순서 (추가로 view에서 order_by 안 했으니까 여기서 정렬)
+        ordering = ['-like_count', '-avg_score', '-rating_count', '-comment_count', '-recipe_id']
+
+    def __str__(self):
+        return f"[{self.recipe_id}] {self.title}"

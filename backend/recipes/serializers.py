@@ -1,5 +1,4 @@
 from django.contrib.auth.hashers import make_password, check_password
-from .models import Rating
 from rest_framework import serializers
 from .models import (
     Member,
@@ -10,6 +9,9 @@ from .models import (
     RecipeIngredient,
     Ingredient,
     RecipeComment,
+    Rating,
+    RecipeSummary,
+    Report,
 )
 
 
@@ -243,3 +245,74 @@ class RecipeCommentCreateSerializer(serializers.Serializer):
         if not value.strip():
             raise serializers.ValidationError("댓글 내용을 입력해주세요.")
         return value
+
+
+# ============================
+# 인기 레시피 Serializer
+# ============================
+
+class PopularRecipeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RecipeSummary
+        fields = (
+            'recipe_id',
+            'title',
+            'description',
+            'cooking_time',
+            'avg_score',
+            'rating_count',
+            'like_count',
+            'comment_count',
+        )
+
+
+# ============================
+# 신고(Report) 관련 Serializer
+# ============================
+
+class ReportCreateSerializer(serializers.Serializer):
+    """
+    유저 신고 생성용: reason만 받는다.
+    target_type / recipe / comment 는 View에서 세팅
+    """
+    reason = serializers.CharField()
+
+    def validate_reason(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("신고 사유를 입력해주세요.")
+        return value
+
+
+class ReportListSerializer(serializers.ModelSerializer):
+    """
+    관리자용 신고 목록 조회
+    """
+    reporter = MemberSimpleSerializer(read_only=True)
+    handled_by = MemberSimpleSerializer(read_only=True)
+
+    class Meta:
+        model = Report
+        fields = (
+            'report_id',
+            'reporter',
+            'target_type',
+            'recipe_id',
+            'comment_id',
+            'reason',
+            'status',
+            'created_at',
+            'handled_by',
+            'handled_at',
+            'handle_note',
+        )
+
+
+class ReportUpdateSerializer(serializers.Serializer):
+    """
+    관리자 신고 처리용
+    """
+    status = serializers.ChoiceField(
+        choices=['PENDING', 'RESOLVED', 'REJECTED'],
+        required=False,
+    )
+    handle_note = serializers.CharField(required=False, allow_blank=True)
