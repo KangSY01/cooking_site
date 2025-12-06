@@ -141,11 +141,13 @@ class RecipeTag(models.Model):
         unique_together = ('recipe', 'tag')
 
 
+
 class RecipeLike(models.Model):
     member = models.ForeignKey(
         Member,
         models.DO_NOTHING,
         related_name='recipe_likes',
+        primary_key=True,
     )
     recipe = models.ForeignKey(
         Recipe,

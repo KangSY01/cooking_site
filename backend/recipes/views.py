@@ -5,11 +5,12 @@ from rest_framework import status
 from .jwt_utils import create_jwt
 from django.shortcuts import render
 from .authentication import JWTAuthentication
-from .models import Recipe, RecipeComment, Member
-from rest_framework.permissions import IsAuthenticated
+from .models import Recipe, RecipeComment, Member, RecipeLike, Rating
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from django.shortcuts import render, get_object_or_404
 
 # Create your views here.
-from rest_framework import generics
+from rest_framework import generics, permissions
 from .models import Recipe, RecipeComment
 from .serializers import (
     RecipeListSerializer,
@@ -17,26 +18,52 @@ from .serializers import (
     RecipeCommentSerializer,
     MemberSignupSerializer,
     MemberLoginSerializer,
+    RecipeCreateUpdateSerializer,
+    RatingCreateUpdateSerializer,
 )
+from .permissions import IsAuthorOrAdmin
 
-
-class RecipeListAPIView(generics.ListAPIView):
+class RecipeListAPIView(generics.ListCreateAPIView):
     """
-    GET /api/recipes/
-    레시피 목록 조회
+    GET  /api/recipes/   : 누구나 조회 가능
+    POST /api/recipes/   : 로그인한 회원이면 누구나 작성 가능
     """
     queryset = Recipe.objects.select_related('author').order_by('-created_at')
-    serializer_class = RecipeListSerializer
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.IsAuthenticated()]   # ✅ IsCook 제거
+        return [permissions.AllowAny()]
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return RecipeCreateUpdateSerializer
+        return RecipeListSerializer
 
 
-class RecipeDetailAPIView(generics.RetrieveAPIView):
+class RecipeDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     """
-    GET /api/recipes/<pk>/
-    특정 레시피 상세 조회
+    GET    /api/recipes/<recipe_id>/   상세 조회 (모두)
+    PUT    /api/recipes/<recipe_id>/   수정 (작성자 또는 ADMIN)
+    DELETE /api/recipes/<recipe_id>/   삭제 (작성자 또는 ADMIN)
     """
     queryset = Recipe.objects.select_related('author')
-    serializer_class = RecipeDetailSerializer
-    lookup_field = 'recipe_id'  # 기본은 pk 이지만, 우리는 recipe_id가 PK이므로 이렇게 명시
+    lookup_field = 'recipe_id'       # DB PK 필드명
+    lookup_url_kwarg = 'recipe_id'   # URL 변수명과 맞춰주기 (api/recipes/<int:recipe_id>/)
+
+    def get_permissions(self):
+        # 수정/삭제는 로그인 + 작성자 or ADMIN
+        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
+            return [permissions.IsAuthenticated(), IsAuthorOrAdmin()]
+        # GET은 모두 허용
+        return [permissions.AllowAny()]
+
+    def get_serializer_class(self):
+        # 수정할 때는 생성/수정용
+        if self.request.method in ['PUT', 'PATCH']:
+            return RecipeCreateUpdateSerializer
+        # 조회할 때는 상세 Serializer
+        return RecipeDetailSerializer
 
 
 class RecipeCommentListAPIView(generics.ListAPIView):
@@ -115,6 +142,122 @@ class MemberMeAPIView(APIView):
                 "login_id": member.login_id,
                 "name": member.name,
                 "role": member.role,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class RecipeLikeToggleAPIView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, recipe_id):
+        member: Member = request.user
+        recipe = get_object_or_404(Recipe, recipe_id=recipe_id)
+
+        qs = RecipeLike.objects.filter(member=member, recipe=recipe)
+
+        if qs.exists():
+            # 이미 좋아요 되어 있으면 → 취소
+            qs.delete()   # ✅ member+recipe 조건으로 삭제
+            return Response({"liked": False}, status=status.HTTP_200_OK)
+        else:
+            # 아직 좋아요 안 했으면 → 추가
+            RecipeLike.objects.create(member=member, recipe=recipe)
+            return Response({"liked": True}, status=status.HTTP_201_CREATED)
+
+
+class RecipeRatingAPIView(APIView):
+    """
+    GET    /api/recipes/<recipe_id>/rating/
+    POST   /api/recipes/<recipe_id>/rating/
+    DELETE /api/recipes/<recipe_id>/rating/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get(self, request, recipe_id):
+        recipe = get_object_or_404(Recipe, recipe_id=recipe_id)
+
+        my_score = None
+        member = request.user if getattr(request, "user", None) and request.user.is_authenticated else None
+        if member:
+            rating = Rating.objects.filter(recipe=recipe, member=member).first()
+            if rating:
+                my_score = rating.score
+
+        return Response(
+            {
+                "recipe_id": recipe.recipe_id,
+                "avg_score": recipe.avg_score,
+                "rating_count": recipe.rating_count,
+                "my_score": my_score,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def post(self, request, recipe_id):
+        # 로그인 필수
+        if not request.user or not request.user.is_authenticated:
+            return Response(
+                {"detail": "로그인이 필요합니다."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        recipe = get_object_or_404(Recipe, recipe_id=recipe_id)
+        member: Member = request.user
+
+        serializer = RatingCreateUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        score = serializer.validated_data["score"]
+
+        rating, created = Rating.objects.update_or_create(
+            recipe=recipe,
+            member=member,
+            defaults={"score": score},
+        )
+
+        # 트리거에 의해 recipe.avg_score, rating_count가 갱신되었을 수 있으니 새로 읽기
+        recipe.refresh_from_db()
+
+        return Response(
+            {
+                "created": created,
+                "score": rating.score,
+                "recipe_id": recipe.recipe_id,
+                "avg_score": recipe.avg_score,
+                "rating_count": recipe.rating_count,
+            },
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+    def delete(self, request, recipe_id):
+        # 로그인 필수
+        if not request.user or not request.user.is_authenticated:
+            return Response(
+                {"detail": "로그인이 필요합니다."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        recipe = get_object_or_404(Recipe, recipe_id=recipe_id)
+        member: Member = request.user
+
+        qs = Rating.objects.filter(recipe=recipe, member=member)
+        if not qs.exists():
+            return Response(
+                {"detail": "이 레시피에 남긴 평점이 없습니다."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        qs.delete()
+        recipe.refresh_from_db()
+
+        return Response(
+            {
+                "deleted": True,
+                "recipe_id": recipe.recipe_id,
+                "avg_score": recipe.avg_score,
+                "rating_count": recipe.rating_count,
             },
             status=status.HTTP_200_OK,
         )

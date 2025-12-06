@@ -1,4 +1,5 @@
 from django.contrib.auth.hashers import make_password, check_password
+from .models import Rating
 from rest_framework import serializers
 from .models import (
     Member,
@@ -157,3 +158,79 @@ class MemberLoginSerializer(serializers.Serializer):
 
         attrs["member"] = member
         return attrs
+    
+class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
+    """
+    레시피 생성/수정용 Serializer.
+    - author 는 request.user 에서 자동 주입
+    - tag_ids: 태그 id 리스트 (예: [1,2,3])
+    """
+    tag_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False,
+        help_text="태그 id 리스트 (예: [1,2,3])",
+    )
+
+    class Meta:
+        model = Recipe
+        fields = (
+            'title',
+            'description',
+            'cooking_time',
+            'image_path',
+            'tag_ids',
+        )
+
+    def _set_tags(self, recipe, tag_ids):
+        # 기존 태그 연결 삭제
+        RecipeTag.objects.filter(recipe=recipe).delete()
+
+        if not tag_ids:
+            return
+
+        # 유효한 태그만 조회해서 연결
+        tag_qs = Tag.objects.filter(tag_id__in=tag_ids)
+        recipe_tag_objs = [
+            RecipeTag(recipe=recipe, tag=tag)
+            for tag in tag_qs
+        ]
+        RecipeTag.objects.bulk_create(recipe_tag_objs)
+
+    def create(self, validated_data):
+        request = self.context['request']
+        tag_ids = validated_data.pop('tag_ids', [])
+
+        # author는 JWT 인증된 Member
+        recipe = Recipe.objects.create(
+            author=request.user,
+            **validated_data,
+        )
+        self._set_tags(recipe, tag_ids)
+        return recipe
+
+    def update(self, instance, validated_data):
+        tag_ids = validated_data.pop('tag_ids', None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # tag_ids 가 들어온 경우에만 태그 갱신
+        if tag_ids is not None:
+            self._set_tags(instance, tag_ids)
+
+        return instance
+
+
+class RatingSerializer(serializers.ModelSerializer):
+    member = MemberSimpleSerializer(read_only=True)
+
+    class Meta:
+        model = Rating
+        fields = ('rating_id', 'score', 'created_at', 'member')
+
+
+class RatingCreateUpdateSerializer(serializers.Serializer):
+    # 단순히 score 값만 받으면 되므로 Serializer 로 충분
+    score = serializers.IntegerField(min_value=1, max_value=5)
