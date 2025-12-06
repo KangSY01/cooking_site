@@ -7,4 +7,6 @@ urlpatterns = [
     path("recipes/<int:recipe_id>/", views.recipe_detail_page, name="recipe-detail-page"),
     path("mypage/", views.mypage, name="mypage"),
     path("recipes/new/", views.recipe_create_page, name="recipe-create"),
+    path("signup/", views.signup_view, name="signup"),
+    path("recipes/search/", views.recipe_search_page, name="recipe-search"),
 ]

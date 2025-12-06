@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}레시피 검색 | 자취생의 창의 요리{% endblock %}
+
+{% block content %}
+
+<!-- 이 페이지 전용 CSS -->
+<style>
+  /*************************************************
+   * 레이아웃
+   *************************************************/
+  .recipe-search-page {
+    max-width: 1100px;
+    margin: 40px auto 60px auto;
+    padding: 0 20px;
+  }
+
+  .recipe-search-page .page-title {
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .recipe-search-page .page-subtitle {
+    font-size: 14px;
+    color: #777;
+    margin-bottom: 24px;
+  }
+
+  /*************************************************
+   * 검색 폼
+   *************************************************/
+  .search-form {
+    margin-bottom: 24px;
+  }
+
+  .search-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: #ffffff;
+    border-radius: 999px;
+    border: 1px solid #eee;
+    padding: 6px 8px 6px 18px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  }
+
+  .search-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    padding: 10px 8px;
+    background: transparent;
+  }
+
+  .search-input::placeholder {
+    color: #bbb;
+  }
+
+  .btn-primary {
+    background-color: #f97316; /* 오렌지 */
+    color: #fff;
+    border-radius: 999px;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+  }
+
+  .btn-primary:hover {
+    background-color: #ea580c;
+  }
+
+  .search-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #666;
+  }
+
+  .search-status .error-text {
+    color: #e11d48;
+  }
+
+  /*************************************************
+   * 검색 결과 카드 그리드
+   *************************************************/
+  .recipe-list-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px 18px;
+  }
+
+  @media (max-width: 960px) {
+    .recipe-list-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 640px) {
+    .recipe-list-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .recipe-card {
+    background-color: #ffffff;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.07);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .recipe-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.1);
+  }
+
+  .recipe-link {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  /*************************************************
+   * 카드 상단 썸네일 + 별점 배지
+   *************************************************/
+  .recipe-thumb {
+    position: relative;
+    width: 100%;
+    height: 190px; /* 고정 높이 */
+    overflow: hidden;
+  }
+
+  .recipe-thumb img,
+  .recipe-thumb .placeholder-thumb {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .placeholder-thumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f4f4f4;
+    color: #999;
+    font-size: 13px;
+  }
+
+  .rating-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 4px 10px;
+    background-color: #facc15; /* 노랑 계열 */
+    color: #111827;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 999px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  }
+
+  /*************************************************
+   * 카드 하단 정보
+   *************************************************/
+  .recipe-info {
+    padding: 12px 14px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .recipe-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0;
+    color: #111827;
+  }
+
+  .recipe-desc {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0;
+    min-height: 32px;
+  }
+
+  .recipe-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+  }
+
+  .recipe-time {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .recipe-likes {
+    font-size: 12px;
+    font-weight: 500;
+    color: #ef4444;
+  }
+
+  /*************************************************
+   * 태그 칩
+   *************************************************/
+  .recipe-tags {
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .recipe-tags .tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background-color: #fff7ed; /* 연한 오렌지 */
+    color: #ea580c;
+    font-size: 11px;
+    font-weight: 500;
+  }
+</style>
+
+<section class="recipe-search-page">
+  <h1 class="page-title">레시피 검색</h1>
+  <p class="page-subtitle">요리명이나 재료로 레시피를 찾아보세요</p>
+
+  <!-- 검색 폼 -->
+  <form id="recipeSearchForm" class="search-form">
+    <div class="search-input-wrapper">
+      <input
+        type="text"
+        id="keywordInput"
+        class="search-input"
+        placeholder="요리 이름 또는 재료로 검색... (예: 비빔밥, 파스타, 계란, 김치)"
+      />
+      <button type="submit" class="btn-primary">
+        검색하기
+      </button>
+    </div>
+  </form>
+
+  <div class="search-status">
+    <span id="searchResultCount"></span>
+    <span id="searchError" class="error-text"></span>
+  </div>
+
+  <!-- 검색 결과 카드 -->
+  <section id="searchResults" class="recipe-list-grid">
+    <!-- JS로 카드가 들어온다 -->
+  </section>
+</section>
+
+<!-- 이 페이지 전용 JS -->
+<script src="{% static 'js/recipe_search.js' %}"></script>
+
+{% endblock %}

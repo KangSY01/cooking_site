@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}회원가입 | 자취생의 창의 요리{% endblock %}
+
+{% block content %}
+<section class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo-circle">
+      <span class="auth-logo-icon">🍳</span>
+    </div>
+
+    <h2 class="auth-title">회원가입</h2>
+    <p class="auth-subtitle">
+      자취생 요리 커뮤니티에 가입하세요
+    </p>
+
+    <form id="signupForm" class="auth-form">
+      <label class="auth-label">
+        이름
+        <input
+          type="text"
+          id="nameInput"
+          class="auth-input"
+          placeholder="이름을 입력하세요"
+          required
+        >
+      </label>
+
+      <label class="auth-label">
+        아이디
+        <input
+          type="text"
+          id="loginIdInput"
+          class="auth-input"
+          placeholder="사용할 아이디를 입력하세요"
+          required
+        >
+      </label>
+
+      <label class="auth-label">
+        비밀번호
+        <input
+          type="password"
+          id="passwordInput"
+          class="auth-input"
+          placeholder="비밀번호를 입력하세요"
+          required
+        >
+      </label>
+
+      <label class="auth-label">
+        비밀번호 확인
+        <input
+          type="password"
+          id="passwordConfirmInput"
+          class="auth-input"
+          placeholder="비밀번호를 다시 입력하세요"
+          required
+        >
+      </label>
+
+      <label class="auth-remember">
+        <input type="checkbox" id="agreeInput">
+        <span>이용약관 및 개인정보처리방침에 동의합니다</span>
+      </label>
+
+      <button type="submit" class="btn auth-submit">
+        가입하기
+      </button>
+
+      <p id="signupError" class="error auth-error"></p>
+    </form>
+
+    <p class="auth-footer-text">
+      이미 계정이 있으신가요?
+      <a href="/login/" class="auth-link">로그인</a>
+    </p>
+  </div>
+</section>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("signupForm");
+  const nameInput = document.getElementById("nameInput");
+  const loginIdInput = document.getElementById("loginIdInput");
+  const passwordInput = document.getElementById("passwordInput");
+  const passwordConfirmInput = document.getElementById("passwordConfirmInput");
+  const agreeInput = document.getElementById("agreeInput");
+  const errorEl = document.getElementById("signupError");
+
+  // 이미 로그인 상태라면 굳이 회원가입 필요 없으니 마이페이지로 보내도 됨 (선택 사항)
+  const token = localStorage.getItem("accessToken");
+  if (token) {
+    // 원하면 주석 해제
+    // window.location.href = "/mypage/";
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorEl.textContent = "";
+
+    const name = nameInput.value.trim();
+    const loginId = loginIdInput.value.trim();
+    const password = passwordInput.value;
+    const passwordConfirm = passwordConfirmInput.value;
+    const agreed = agreeInput.checked;
+
+    if (!agreed) {
+      errorEl.textContent = "이용약관에 동의해야 회원가입이 가능합니다.";
+      return;
+    }
+
+    if (password !== passwordConfirm) {
+      errorEl.textContent = "비밀번호와 비밀번호 확인이 일치하지 않습니다.";
+      return;
+    }
+
+    if (!name || !loginId || !password) {
+      errorEl.textContent = "모든 필드를 입력해주세요.";
+      return;
+    }
+
+    const payload = {
+      name: name,
+      login_id: loginId,
+      password: password,
+      // role: "COOK",  // 서버에서 기본값이 있다면 생략 가능, 필요하면 주석 해제
+    };
+
+    try {
+      const res = await fetch("/api/auth/signup/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      console.log("signup response:", res.status, data);
+
+      if (!res.ok) {
+        // 서버에서 온 에러 메시지가 있다면 사용자에게 보여주기
+        if (data && typeof data === "object") {
+          if (data.detail) {
+            errorEl.textContent = data.detail;
+          } else if (data.login_id) {
+            errorEl.textContent = data.login_id[0] || "아이디가 유효하지 않습니다.";
+          } else {
+            errorEl.textContent = "회원가입에 실패했습니다. 입력 내용을 확인해주세요.";
+          }
+        } else {
+          errorEl.textContent = "회원가입에 실패했습니다.";
+        }
+        return;
+      }
+
+      // 여기서 data에 access/refresh 토큰이 딸려오면 곧바로 로그인 처리도 가능함.
+      // 예: localStorage.setItem("accessToken", data.access);
+
+      alert("회원가입이 완료되었습니다. 로그인 후 이용해주세요.");
+      window.location.href = "/login/";
+
+    } catch (err) {
+      console.error(err);
+      errorEl.textContent = "서버와 통신 중 오류가 발생했습니다.";
+    }
+  });
+});
+</script>
+{% endblock %}

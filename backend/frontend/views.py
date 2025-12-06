@@ -19,3 +19,13 @@ def mypage(request):
 def recipe_create_page(request):
     # 새 레시피 등록 페이지
     return render(request, "recipes/create.html")
+
+def signup_view(request):
+    return render(request, "signup.html")
+
+def recipe_detail_view(request, recipe_id):
+    # 템플릿에서 recipe_id만 넘겨주고, 데이터는 JS에서 /api/... 로 가져옴
+    return render(request, "recipe_detail.html", {"recipe_id": recipe_id})
+
+def recipe_search_page(request):
+    return render(request, "recipes/recipe_search.html")

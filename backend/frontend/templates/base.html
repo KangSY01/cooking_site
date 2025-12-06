@@ -17,9 +17,8 @@
     </a>
 
     <!-- 오른쪽 전체 그룹 -->
-    <div class="header-right">
       <nav class="main-nav">
-  <a href="#" class="nav-link">
+  <a href="{% url 'recipe-search' %}" class="nav-link">
     <span class="nav-icon">🔍</span>
     <span class="nav-label">레시피 검색</span>
   </a>
@@ -33,10 +32,9 @@
   </a>
 </nav>
 
-      <a href="/login/" class="btn btn-login">로그인</a>
-    </div>
+<a href="/login/" class="btn btn-login" id="headerLoginBtn">로그인</a>
 
-  </div>
+</div>
 </header>
 
   <main class="site-main">

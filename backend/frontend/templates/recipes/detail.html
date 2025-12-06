@@ -3,12 +3,578 @@
 {% block title %}레시피 상세 | 자취생의 창의 요리{% endblock %}
 
 {% block content %}
-<section class="recipe-detail-container" data-recipe-id="{{ recipe_id }}">
-  <div id="recipeDetail">
-    <!-- JS가 이 안에 상세 정보를 채울 예정 -->
-    <p>레시피 정보를 불러오는 중입니다...</p>
-  </div>
+<section id="recipeDetailPage" class="recipe-detail-page" data-recipe-id="{{ recipe_id }}">
 
-  <p id="recipeDetailError" class="error"></p>
+  <!-- 상단 영역: 제목 + 메타 -->
+  <header class="recipe-detail-header">
+    <div class="breadcrumb">← 메인으로 돌아가기</div>
+
+    <div class="recipe-detail-top">
+      <div>
+        <h1 id="recipeTitle" class="recipe-detail-title">레시피 제목</h1>
+        <p id="recipeSubtitle" class="recipe-detail-sub">
+          간단한 설명 텍스트가 여기에 들어갑니다.
+        </p>
+        <div class="recipe-detail-meta">
+          <span id="recipeAuthor">작성자: -</span>
+          <span id="recipeTime">⏱ -분</span>
+        </div>
+        <div id="recipeTags" class="recipe-tags">
+          <!-- 태그 버튼들 -->
+        </div>
+      </div>
+
+      <div class="recipe-detail-actions">
+        <button id="recipeEditBtn" class="btn-outline small">수정</button>
+        <button id="recipeDeleteBtn" class="btn-outline small">삭제</button>
+      </div>
+    </div>
+
+    <div class="recipe-detail-stats">
+      <button id="subscribeBtn" class="btn primary small">구독하기</button>
+
+      <div class="recipe-detail-rating">
+        <span>평점:</span>
+        <span id="recipeStars">⭐⭐⭐⭐⭐</span>
+        <span id="recipeAvgScore" class="rating-score">0.0</span>
+        <span id="recipeRatingCount" class="rating-count">0명 평가</span>
+      </div>
+
+      <div class="recipe-detail-likes">
+        <button id="likeToggleBtn" class="btn-outline small">❤ 좋아요</button>
+        <span id="recipeLikeCount">0</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 대표 이미지 -->
+  <section class="recipe-detail-image-section">
+    <img id="recipeImage" src="" alt="레시피 이미지" class="recipe-detail-image">
+  </section>
+
+  <!-- 재료 / 조리 과정 2컬럼 -->
+  <section class="recipe-detail-main">
+    <div class="recipe-detail-column">
+      <h2 class="column-title">재료</h2>
+      <ul id="ingredientList" class="ingredient-list">
+        <!-- JS로 채움 -->
+      </ul>
+    </div>
+
+    <div class="recipe-detail-column">
+      <h2 class="column-title">조리 과정</h2>
+      <ol id="stepList" class="step-list">
+        <!-- JS로 채움 -->
+      </ol>
+    </div>
+  </section>
+
+  <!-- 댓글 영역 -->
+  <section class="recipe-detail-comments">
+    <h2 class="column-title">
+      댓글 <span id="commentCount">(0)</span>
+    </h2>
+
+    <!-- 댓글 입력 박스 -->
+    <div class="comment-input-box">
+      <textarea
+        id="commentInput"
+        class="comment-textarea"
+        placeholder="댓글을 입력하세요"
+        rows="3"
+      ></textarea>
+      <button id="commentSubmitBtn" class="btn primary small">댓글 작성</button>
+    </div>
+
+    <!-- 댓글 리스트 -->
+    <div id="commentList" class="comment-list">
+      <!-- JS로 댓글 카드들 렌더링 -->
+    </div>
+  </section>
+
 </section>
+
+<style>
+  .recipe-detail-page {
+    max-width: 960px;
+    margin: 32px auto 60px;
+  }
+  .recipe-detail-header {
+    margin-bottom: 24px;
+  }
+  .breadcrumb {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .recipe-detail-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .recipe-detail-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .recipe-detail-sub {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 8px;
+  }
+  .recipe-detail-meta span {
+    font-size: 13px;
+    color: #888;
+    margin-right: 10px;
+  }
+  .recipe-tags {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .recipe-tag-pill {
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #fff4e3;
+    font-size: 12px;
+    color: #c85a00;
+  }
+  .recipe-detail-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .btn-outline.small {
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid #ddd;
+    background: #fff;
+    cursor: pointer;
+  }
+  .btn.primary.small {
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: none;
+    background: #e56600;
+    color: #fff;
+    cursor: pointer;
+  }
+  .recipe-detail-stats {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 16px;
+    font-size: 13px;
+  }
+  .recipe-detail-rating span {
+    margin-right: 4px;
+  }
+  .rating-score {
+    font-weight: 600;
+  }
+  .recipe-detail-image-section {
+    margin: 24px 0;
+  }
+  .recipe-detail-image {
+    width: 100%;
+    border-radius: 18px;
+    object-fit: cover;
+    max-height: 420px;
+  }
+  .recipe-detail-main {
+    display: grid;
+    grid-template-columns: 1.1fr 1.3fr;
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+  .column-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .ingredient-list,
+  .step-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .ingredient-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+  .step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+  .step-badge {
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    background: #ffb380;
+    color: #fff;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* 댓글 영역 */
+  .recipe-detail-comments {
+    margin-top: 12px;
+  }
+  .comment-input-box {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .comment-textarea {
+    flex: 1;
+    resize: none;
+    border-radius: 12px;
+    border: 1px solid #ddd;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  .comment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .comment-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    font-size: 13px;
+  }
+  .comment-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #ffe1c5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .comment-body {
+    flex: 1;
+  }
+  .comment-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .comment-author {
+    font-weight: 600;
+  }
+  .comment-date {
+    font-size: 11px;
+    color: #888;
+  }
+  .comment-content {
+    font-size: 13px;
+    white-space: pre-wrap;
+  }
+  .comment-delete {
+    font-size: 11px;
+    color: #c44;
+    cursor: pointer;
+    margin-left: 8px;
+  }
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const pageEl = document.getElementById("recipeDetailPage");
+  const recipeId = pageEl.dataset.recipeId;
+
+  const token = localStorage.getItem("accessToken");
+  let currentMemberId = null;  // 내 댓글 삭제 여부 판단용
+
+  // ====== 공통 DOM ======
+  const titleEl = document.getElementById("recipeTitle");
+  const subEl = document.getElementById("recipeSubtitle");
+  const authorEl = document.getElementById("recipeAuthor");
+  const timeEl = document.getElementById("recipeTime");
+  const tagsEl = document.getElementById("recipeTags");
+  const imageEl = document.getElementById("recipeImage");
+  const avgScoreEl = document.getElementById("recipeAvgScore");
+  const ratingCountEl = document.getElementById("recipeRatingCount");
+  const likeCountEl = document.getElementById("recipeLikeCount");
+  const ingredientListEl = document.getElementById("ingredientList");
+  const stepListEl = document.getElementById("stepList");
+  const commentListEl = document.getElementById("commentList");
+  const commentCountEl = document.getElementById("commentCount");
+  const commentInput = document.getElementById("commentInput");
+  const commentSubmitBtn = document.getElementById("commentSubmitBtn");
+
+  // ====== 1) 내 정보 불러오기 (댓글 삭제/표시용) ======
+  if (token) {
+    fetch("/api/auth/me/", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.member_id) {
+          currentMemberId = data.member_id;
+        }
+      })
+      .catch(() => {});
+  }
+
+  // ====== 2) 레시피 상세 데이터 불러오기 ======
+  async function loadRecipeDetail() {
+    try {
+      const res = await fetch(`/api/recipes/${recipeId}/`);
+      const data = await res.json();
+      if (!res.ok) {
+        console.error("레시피 상세 실패", data);
+        return;
+      }
+
+      // 여기서 data 구조는 너의 RecipeDetailSerializer에 맞게 약간 수정할 수 있음
+      titleEl.textContent = data.title || "";
+      subEl.textContent = data.description || "";
+      authorEl.textContent = data.author_name ? `작성자: ${data.author_name}` : "";
+      if (data.cooking_time) {
+        timeEl.textContent = `⏱ ${data.cooking_time}분`;
+      }
+
+      // 대표 이미지
+      if (data.image_path) {
+        imageEl.src = data.image_path;
+      } else {
+        imageEl.src = "https://via.placeholder.com/960x400?text=No+Image";
+      }
+
+      // 태그
+      tagsEl.innerHTML = "";
+      const tags = data.tags || [];  // ["한식","간단","매운맛"] 같은 형태라고 가정
+      tags.forEach(tag => {
+        const pill = document.createElement("span");
+        pill.className = "recipe-tag-pill";
+        pill.textContent = `#${tag}`;
+        tagsEl.appendChild(pill);
+      });
+
+      // 평점 / 좋아요
+      if (typeof data.avg_score !== "undefined" && data.avg_score !== null) {
+        avgScoreEl.textContent = data.avg_score.toFixed
+          ? data.avg_score.toFixed(1)
+          : data.avg_score;
+      }
+      ratingCountEl.textContent = data.rating_count
+        ? `${data.rating_count}명 평가`
+        : "0명 평가";
+      likeCountEl.textContent = data.like_count ?? 0;
+
+      // 재료
+      ingredientListEl.innerHTML = "";
+      const ingredients = data.ingredients || []; // [{name, amount}, ...]
+      ingredients.forEach(ing => {
+        const li = document.createElement("li");
+        li.className = "ingredient-item";
+        li.innerHTML = `
+          <span>${ing.name}</span>
+          <span>${ing.amount || ""}</span>
+        `;
+        ingredientListEl.appendChild(li);
+      });
+
+      // 단계
+      stepListEl.innerHTML = "";
+      const steps = data.steps || []; // [{step_order, content}, ...]
+      steps
+        .sort((a, b) => (a.step_order || 0) - (b.step_order || 0))
+        .forEach(step => {
+          const li = document.createElement("li");
+          li.className = "step-item";
+          li.innerHTML = `
+            <div class="step-badge">${step.step_order}</div>
+            <div>${step.content}</div>
+          `;
+          stepListEl.appendChild(li);
+        });
+
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // ====== 3) 댓글 목록 불러오기 ======
+  async function loadComments() {
+    try {
+      const res = await fetch(`/api/recipes/${recipeId}/comments/`);
+      const data = await res.json();
+      if (!res.ok) {
+        console.error("댓글 목록 실패", data);
+        return;
+      }
+
+      const comments = Array.isArray(data) ? data : data.results || [];
+      commentCountEl.textContent = `(${comments.length})`;
+      commentListEl.innerHTML = "";
+
+      comments.forEach(comment => {
+        const item = document.createElement("div");
+        item.className = "comment-item";
+
+        const canDelete =
+          currentMemberId && comment.author_id === currentMemberId;
+
+        item.innerHTML = `
+          <div class="comment-avatar">👤</div>
+          <div class="comment-body">
+            <div class="comment-meta">
+              <div>
+                <span class="comment-author">${comment.author_name || "익명"}</span>
+                <span class="comment-date">${formatDate(comment.created_at)}</span>
+              </div>
+              ${
+                canDelete
+                  ? `<span class="comment-delete" data-comment-id="${comment.comment_id}">삭제</span>`
+                  : ""
+              }
+            </div>
+            <div class="comment-content">${escapeHtml(comment.content || "")}</div>
+          </div>
+        `;
+        commentListEl.appendChild(item);
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function formatDate(isoString) {
+    if (!isoString) return "";
+    const d = new Date(isoString);
+    return `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`;
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.innerText = text;
+    return div.innerHTML;
+  }
+
+  // ====== 4) 댓글 작성 (로그인 필요) ======
+  function ensureLoginOrRedirect() {
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      alert("로그인 후 댓글을 작성할 수 있습니다.");
+      localStorage.setItem("nextUrl", window.location.pathname);
+      window.location.href = "/login/";
+      return false;
+    }
+    return true;
+  }
+
+  // 포커스만 해도 로그인 체크 (요구사항)
+  commentInput.addEventListener("focus", () => {
+    ensureLoginOrRedirect();
+  });
+
+  // 버튼 클릭 시 댓글 작성
+  commentSubmitBtn.addEventListener("click", async () => {
+    if (!ensureLoginOrRedirect()) return;
+
+    const token = localStorage.getItem("accessToken");
+    const content = commentInput.value.trim();
+    if (!content) {
+      alert("댓글 내용을 입력해주세요.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/recipes/${recipeId}/comments/create/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ content }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        console.error("댓글 작성 실패", data);
+        alert("댓글 작성에 실패했습니다.");
+        return;
+      }
+
+      commentInput.value = "";
+      await loadComments();
+    } catch (err) {
+      console.error(err);
+      alert("서버와 통신 중 오류가 발생했습니다.");
+    }
+  });
+
+  // ====== 5) 댓글 삭제 (내 댓글만) ======
+  commentListEl.addEventListener("click", async (e) => {
+    if (!e.target.classList.contains("comment-delete")) return;
+    if (!ensureLoginOrRedirect()) return;
+
+    const commentId = e.target.dataset.commentId;
+    if (!commentId) return;
+
+    if (!confirm("댓글을 삭제하시겠습니까?")) return;
+
+    const token = localStorage.getItem("accessToken");
+
+    try {
+      const res = await fetch(`/api/comments/${commentId}/`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok && res.status !== 204) {
+        console.error("댓글 삭제 실패", res.status);
+        alert("댓글 삭제에 실패했습니다.");
+        return;
+      }
+
+      await loadComments();
+    } catch (err) {
+      console.error(err);
+      alert("서버와 통신 중 오류가 발생했습니다.");
+    }
+  });
+
+  // ========= 초기 로드 =========
+  loadRecipeDetail();
+  loadComments();
+
+  // 브레드크럼 클릭 시 메인으로
+  document.querySelector(".breadcrumb").addEventListener("click", () => {
+    window.location.href = "/";
+  });
+});
+</script>
 {% endblock %}

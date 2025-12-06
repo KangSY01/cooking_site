@@ -94,13 +94,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // 2) "레시피 둘러보기" 버튼 클릭 시 인기 레시피로 스크롤
   const scrollBtn = document.getElementById("scrollToPopularBtn");
-  const popularSection = document.getElementById("popular-recipes");
+const titleEl = document.querySelector("#popular-recipes .section-header h2");
 
-  if (scrollBtn && popularSection) {
-    scrollBtn.addEventListener("click", () => {
-      popularSection.scrollIntoView({ behavior: "smooth" });
-    });
-  }
+if (scrollBtn && titleEl) {
+  scrollBtn.addEventListener("click", () => {
+  const y = titleEl.getBoundingClientRect().top + window.pageYOffset - 80; 
+  window.scrollTo({ top: y, behavior: "smooth" });
+});
+}
+
 
 
   // 3) 🔥 레시피 상세 페이지라면 상세 불러오기 (여기가 새로 추가되는 부분)
