@@ -10,20 +10,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function initAdminPage() {
   try {
-    // 개발용 임시: /api/auth/me/ 체크 잠깐 끔
-    // const meRes = await authFetch("/api/auth/me/");
-    // if (!meRes.ok) {
-    //   alert("로그인이 필요합니다.");
-    //   window.location.href = "/login/";
-    //   return;
-    // }
-    // const me = await meRes.json();
-    // const role = me.role || me.user_role || me.member_role || null;
-    // if (role !== "ADMIN") {
-    //   alert("관리자만 접근할 수 있습니다.");
-    //   window.location.href = "/";
-    //   return;
-    // }
+    //개발용 임시: /api/auth/me/ 체크 잠깐 끔
+    const meRes = await authFetch("/api/auth/me/");
+    if (!meRes.ok) {
+      alert("로그인이 필요합니다.");
+      window.location.href = "/login/";
+      return;
+    }
+    const me = await meRes.json();
+    const role = me.role || me.user_role || me.member_role || null;
+    if (role !== "ADMIN") {
+      alert("관리자만 접근할 수 있습니다.");
+      window.location.href = "/";
+      return;
+    }
 
     // 2) 통계, 신고, 신규회원 불러오기
     loadAdminStats();

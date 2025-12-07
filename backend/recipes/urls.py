@@ -32,8 +32,7 @@ urlpatterns = [
     path('api/recipes/create/', RecipeCreateView.as_view(), name='recipe-create'),
 
     # 레시피 상세 / 수정 / 삭제
-    #path('api/recipes/<int:recipe_id>/', RecipeDetailAPIView.as_view(), name='recipe-detail'),
-    path("recipes/<int:recipe_id>/", RecipeDetailAPIView.as_view()),
+    path('api/recipes/<int:recipe_id>/', RecipeDetailAPIView.as_view(), name='recipe-detail'),
 
     # 댓글 조회 / 작성 / 삭제
     path('api/recipes/<int:recipe_id>/comments/', RecipeCommentListAPIView.as_view(), name='recipe-comments'),

@@ -8,8 +8,7 @@ from django.core.files.storage import default_storage
 from django.utils.crypto import get_random_string
 from rest_framework.parsers import MultiPartParser, FormParser
 import os
-from rest_framework import permissions
-from rest_framework import generics
+from rest_framework import generics, permissions, filters
 from rest_framework.exceptions import PermissionDenied
 
 from .jwt_utils import create_jwt
@@ -92,22 +91,19 @@ class MyRecipeListAPIView(generics.ListAPIView):
         ).order_by("-created_at")
 
 class RecipeListAPIView(generics.ListCreateAPIView):
-    """
-    GET  /api/recipes/   : 누구나 조회 가능
-    POST /api/recipes/   : 로그인한 회원이면 누구나 작성 가능
-    """
     queryset = Recipe.objects.select_related('author').order_by('-created_at')
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['title', 'description']   # ← 일단 여기만 사용
 
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [permissions.IsAuthenticated()]   # ✅ IsCook 제거
+            return [permissions.IsAuthenticated()]
         return [permissions.AllowAny()]
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
             return RecipeCreateUpdateSerializer
         return RecipeListSerializer
-
 
 class RecipeDetailAPIView(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -117,27 +113,21 @@ class RecipeDetailAPIView(APIView):
 
     def get(self, request, recipe_id):
         recipe = self.get_object(recipe_id)
+
+        # 기본 상세 데이터
         serializer = RecipeDetailSerializer(recipe)
-        return Response(serializer.data)
+        data = serializer.data
 
-    def delete(self, request, recipe_id):
-        recipe = self.get_object(recipe_id)
+        # 로그인한 경우, 이 레시피에 좋아요 했는지 여부 추가
+        user = request.user if request.user.is_authenticated else None
+        if user:
+            liked = RecipeLike.objects.filter(member=user, recipe=recipe).exists()
+        else:
+            liked = False
 
-        # 1) 로그인 확인
-        if not request.user.is_authenticated:
-            return Response({"detail": "로그인이 필요합니다."}, status=401)
+        data["is_liked"] = liked
+        return Response(data)
 
-        # 2) 작성자 또는 관리자만 삭제 가능
-        # author 필드 이름은 실제 모델에 맞게 조정 (예: recipe.author_id, recipe.author)
-        author_id = getattr(recipe, "author_id", None)
-        user_role = getattr(request.user, "role", None)
-
-        if (request.user.id != author_id) and (user_role != "ADMIN"):
-            return Response({"detail": "삭제 권한이 없습니다."}, status=403)
-
-        # 3) 삭제
-        recipe.delete()
-        return Response(status=204)
 
 
 class RecipeCommentListAPIView(generics.ListAPIView):
@@ -521,13 +511,13 @@ class AdminReportListAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # admin: Member = request.user
+        admin: Member = request.user
 
-        # if admin.role != "ADMIN":
-        #     return Response(
-        #         {"detail": "관리자만 접근할 수 있습니다."},
-        #         status=status.HTTP_403_FORBIDDEN
-        #     )
+        if admin.role != "ADMIN":
+            return Response(
+                {"detail": "관리자만 접근할 수 있습니다."},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         status_filter = request.query_params.get('status')
 
@@ -552,13 +542,13 @@ class AdminReportUpdateAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, report_id):
-        # admin: Member = request.user
+        admin: Member = request.user
 
-        # if admin.role != "ADMIN":
-        #     return Response(
-        #         {"detail": "관리자만 접근할 수 있습니다."},
-        #         status=status.HTTP_403_FORBIDDEN
-        #     )
+        if admin.role != "ADMIN":
+            return Response(
+                {"detail": "관리자만 접근할 수 있습니다."},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         report = get_object_or_404(Report, report_id=report_id)
 

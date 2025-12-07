@@ -91,7 +91,7 @@ class RecipeListSerializer(serializers.ModelSerializer):
 
 
 class RecipeDetailSerializer(serializers.ModelSerializer):
-    author = MemberSimpleSerializer(read_only=True)
+    author_name = serializers.CharField(source="author.name", read_only=True)
     tags = serializers.SerializerMethodField()
     steps = RecipeStepSerializer(many=True, read_only=True)
     ingredients = serializers.SerializerMethodField()
@@ -101,7 +101,7 @@ class RecipeDetailSerializer(serializers.ModelSerializer):
         fields = (
             'recipe_id',
             'title',
-            'author',
+            'author_name',      # ★ author 대신 author_name
             'description',
             'cooking_time',
             'image_path',
@@ -115,14 +115,19 @@ class RecipeDetailSerializer(serializers.ModelSerializer):
         )
 
     def get_tags(self, obj):
-        tag_objs = [rt.tag for rt in obj.recipe_tags.all()]
-        return TagSerializer(tag_objs, many=True).data
+        # JS가 ["한식","간단"] 형식을 기대하므로 이름만 리스트로 반환
+        return [rt.tag.name for rt in obj.recipe_tags.all()]
 
     def get_ingredients(self, obj):
-        # recipe.recipe_ingredients → RecipeIngredient 쿼리셋
+        # JS가 [{name, amount}] 형식을 기대하므로 키를 name으로 맞추기
         ri_qs = obj.recipe_ingredients.all()
-        return IngredientAmountSerializer(ri_qs, many=True).data
-
+        return [
+            {
+                "name": ri.ingredient.name,
+                "amount": ri.amount or ""
+            }
+            for ri in ri_qs
+        ]
 
 class RecipeCommentSerializer(serializers.ModelSerializer):
     author = MemberSimpleSerializer(read_only=True)
@@ -369,7 +374,7 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             'title',
             'description',
             'cooking_time',
-            'image_path',  # S3 URL or local path
+            'image_path',
             'ingredients',
             'steps',
         ]
